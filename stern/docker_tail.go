@@ -10,43 +10,33 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
 )
 
 func StartDocker() {
-	// Maybe hardcode the version to the lowest version needed?
 	apiClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
 	}
 	defer apiClient.Close()
 
-	var lastCtr string = ""
-	opts := container.ListOptions{All: false}
+	knownContainers := make(map[string]bool)
+	opts := container.ListOptions{All: true}
 	for {
-		if len(lastCtr) > 0 {
-			args := filters.NewArgs(filters.KeyValuePair{Key: "since", Value: lastCtr})
-			if err != nil {
-				panic(err)
-			}
-			opts.Filters = args
-			//opts.Filters = filters.Args{"since": {lastCtr: true}}
-		} else {
-			fmt.Println("Listing all containers")
-		}
-		//fmt.Println("Opts", opts.Since)
 		containers, err := apiClient.ContainerList(context.Background(), opts)
 		if err != nil {
 			panic(err)
 		}
 
+		newContainers := make(map[string]bool)
 		for _, ctr := range containers {
 			//fmt.Printf("%s %s (status: %s)\n", ctr.ID, ctr.Image, ctr.Status)
-			fmt.Printf("Started: %s\n", time.Unix(ctr.Created, 0))
-			go Start(apiClient, ctr)
-			lastCtr = ctr.ID
+			if _, ok := knownContainers[ctr.ID]; !ok {
+				go Start(apiClient, ctr)
+			}
+			newContainers[ctr.ID] = true
 		}
+		knownContainers = newContainers
 		time.Sleep(1 * time.Second)
 	}
 }
