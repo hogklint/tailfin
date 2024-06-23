@@ -21,7 +21,7 @@ func StartTail(config *Config, apiClient *client.Client, target *DockerTarget) {
 }
 
 func Start(apiClient *client.Client, target *DockerTarget) error {
-	fmt.Println("Getting logs", target.Id, target.Name)
+	fmt.Println("Getting logs", target.Id, target.Names[0])
 	logs, err := apiClient.ContainerLogs(context.Background(), target.Id, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
 	if err != nil {
 		panic(err)
