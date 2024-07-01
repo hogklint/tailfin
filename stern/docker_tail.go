@@ -5,24 +5,48 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"text/template"
 	//"strings"
 
+	"github.com/fatih/color"
 	//"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
-	"github.com/docker/docker/client"
+	dockerclient "github.com/docker/docker/client"
 )
 
-func StartTail(config *Config, apiClient *client.Client, target *DockerTarget) {
-	err := Start(apiClient, target)
+type DockerTail struct {
+	client         *dockerclient.Client
+	ContainerId    string
+	ContainerNames []string
+	containerColor *color.Color
+	tmpl           *template.Template
+	out            io.Writer
+	errOut         io.Writer
+}
+
+func NewDockerTail(client *dockerclient.Client, containerId string, containerNames []string, tmpl *template.Template, out, errOut io.Writer) *DockerTail {
+	return &DockerTail{
+		client:         client,
+		ContainerId:    containerId,
+		ContainerNames: containerNames,
+		containerColor: nil,
+		tmpl:           tmpl,
+		out:            out,
+		errOut:         errOut,
+	}
+}
+
+func (t *DockerTail) Start( /*ctx?*/ ) {
+	err := t.consumeRequest()
 	if err != nil {
-		fmt.Fprintf(config.ErrOut, "Some error occured 4567: %v\n", err)
+		fmt.Fprintf(t.errOut, "Some error occured: %v\n", err)
 		return
 	}
 }
 
-func Start(apiClient *client.Client, target *DockerTarget) error {
-	fmt.Println("Getting logs", target.Id, target.Names[0])
-	logs, err := apiClient.ContainerLogs(context.Background(), target.Id, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
+func (t *DockerTail) consumeRequest() error {
+	fmt.Println("Getting logs", t.ContainerId, t.ContainerNames[0])
+	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
 	if err != nil {
 		panic(err)
 	}

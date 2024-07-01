@@ -21,13 +21,19 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 		return err
 	}
 
+	tailTarget := func(target *DockerTarget) {
+		tail := NewDockerTail(client, target.Id, target.Names, config.Template, config.Out, config.ErrOut)
+		tail.Start()
+	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for {
 			target := <-added
-			StartTail(config, client, target)
+			go func() {
+				tailTarget(target)
+			}()
 		}
 	}()
 	wg.Wait()
