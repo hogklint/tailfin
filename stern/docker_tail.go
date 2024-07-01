@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
-	//"strings"
 
 	"github.com/fatih/color"
 	//"github.com/docker/docker/api/types"
@@ -19,17 +19,21 @@ type DockerTail struct {
 	ContainerId    string
 	ContainerNames []string
 	containerColor *color.Color
+	Options        *TailOptions
 	tmpl           *template.Template
 	out            io.Writer
 	errOut         io.Writer
 }
 
-func NewDockerTail(client *dockerclient.Client, containerId string, containerNames []string, tmpl *template.Template, out, errOut io.Writer) *DockerTail {
+func NewDockerTail(client *dockerclient.Client, containerId string, containerNames []string, tmpl *template.Template, out, errOut io.Writer, options *TailOptions) *DockerTail {
+	colors := colorList[colorIndex(containerId)]
+
 	return &DockerTail{
 		client:         client,
 		ContainerId:    containerId,
 		ContainerNames: containerNames,
-		containerColor: nil,
+		Options:        options,
+		containerColor: colors[1],
 		tmpl:           tmpl,
 		out:            out,
 		errOut:         errOut,
@@ -37,11 +41,13 @@ func NewDockerTail(client *dockerclient.Client, containerId string, containerNam
 }
 
 func (t *DockerTail) Start( /*ctx?*/ ) {
+	t.printStarting()
 	err := t.consumeRequest()
 	if err != nil {
 		fmt.Fprintf(t.errOut, "Some error occured: %v\n", err)
 		return
 	}
+	t.printStopping()
 }
 
 func (t *DockerTail) consumeRequest() error {
@@ -72,4 +78,20 @@ func (t *DockerTail) consumeRequest() error {
 		}
 	}
 	return nil
+}
+
+func (t *DockerTail) printStarting() {
+	if !t.Options.OnlyLogLines {
+		g := color.New(color.FgHiGreen, color.Bold).SprintFunc()
+		c := t.containerColor.SprintFunc()
+		fmt.Fprintf(t.errOut, "%s › %s\n", g("+"), c(strings.Join(t.ContainerNames, ",")))
+	}
+}
+
+func (t *DockerTail) printStopping() {
+	if !t.Options.OnlyLogLines {
+		r := color.New(color.FgHiRed, color.Bold).SprintFunc()
+		c := t.containerColor.SprintFunc()
+		fmt.Fprintf(t.errOut, "%s › %s\n", r("-"), c(strings.Join(t.ContainerNames, ",")))
+	}
 }

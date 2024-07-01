@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"hash/fnv"
 	"io"
 	"strings"
 	"text/template"
@@ -93,12 +92,6 @@ func determineColor(podName, containerName string, diffContainer bool) (podColor
 		return colors[0], colorList[colorIndex(containerName)][1]
 	}
 	return colors[0], colors[1]
-}
-
-func colorIndex(name string) uint32 {
-	hash := fnv.New32()
-	_, _ = hash.Write([]byte(name))
-	return hash.Sum32() % uint32(len(colorList))
 }
 
 // Start starts tailing

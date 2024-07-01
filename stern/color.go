@@ -2,6 +2,7 @@ package stern
 
 import (
 	"errors"
+	"hash/fnv"
 	"strconv"
 	"strings"
 
@@ -15,6 +16,12 @@ var colorList = [][2]*color.Color{
 	{color.New(color.FgHiYellow), color.New(color.FgYellow)},
 	{color.New(color.FgHiBlue), color.New(color.FgBlue)},
 	{color.New(color.FgHiRed), color.New(color.FgRed)},
+}
+
+func colorIndex(name string) uint32 {
+	hash := fnv.New32()
+	_, _ = hash.Write([]byte(name))
+	return hash.Sum32() % uint32(len(colorList))
 }
 
 func SetColorList(podColors, containerColors []string) error {

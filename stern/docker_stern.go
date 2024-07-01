@@ -22,7 +22,20 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 	}
 
 	tailTarget := func(target *DockerTarget) {
-		tail := NewDockerTail(client, target.Id, target.Names, config.Template, config.Out, config.ErrOut)
+		options := &TailOptions{
+			Timestamps:      config.Timestamps,
+			TimestampFormat: config.TimestampFormat,
+			Location:        config.Location,
+			SinceSeconds:    nil,
+			Exclude:         config.Exclude,
+			Include:         config.Include,
+			Highlight:       config.Highlight,
+			Namespace:       false,
+			TailLines:       config.TailLines,
+			Follow:          config.Follow,
+			OnlyLogLines:    config.OnlyLogLines,
+		}
+		tail := NewDockerTail(client, target.Id, target.Names, config.Template, config.Out, config.ErrOut, options)
 		tail.Start()
 	}
 	var wg sync.WaitGroup
