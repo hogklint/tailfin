@@ -2,6 +2,7 @@ package stern
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 type DockerTail struct {
 	client         *dockerclient.Client
 	ContainerId    string
+	ContainerName  string
 	ContainerNames []string
 	containerColor *color.Color
 	Options        *TailOptions
@@ -25,12 +27,13 @@ type DockerTail struct {
 	errOut         io.Writer
 }
 
-func NewDockerTail(client *dockerclient.Client, containerId string, containerNames []string, tmpl *template.Template, out, errOut io.Writer, options *TailOptions) *DockerTail {
+func NewDockerTail(client *dockerclient.Client, containerId, containerName string, containerNames []string, tmpl *template.Template, out, errOut io.Writer, options *TailOptions) *DockerTail {
 	colors := colorList[colorIndex(containerId)]
 
 	return &DockerTail{
 		client:         client,
 		ContainerId:    containerId,
+		ContainerName:  containerName,
 		ContainerNames: containerNames,
 		Options:        options,
 		containerColor: colors[1],
@@ -51,24 +54,16 @@ func (t *DockerTail) Start( /*ctx?*/ ) {
 }
 
 func (t *DockerTail) consumeRequest() error {
-	fmt.Println("Getting logs", t.ContainerId, t.ContainerNames[0])
-	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true})
+	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Timestamps: false})
 	if err != nil {
 		panic(err)
 	}
-	//fmt.Println("Got logs")
-	gotLogs := false
 
 	r := bufio.NewReader(logs)
 	for {
 		line, err := r.ReadBytes('\n')
 		if len(line) != 0 {
-			if !gotLogs {
-				fmt.Println("Got logs")
-				break
-				//fmt.Println(strings.TrimSuffix(string(line), "\n"))
-			}
-			gotLogs = true
+			t.consumeLine(strings.TrimSuffix(string(line), "\n"))
 		}
 		if err != nil {
 			if err != io.EOF {
@@ -77,7 +72,46 @@ func (t *DockerTail) consumeRequest() error {
 			return nil
 		}
 	}
-	return nil
+}
+
+func (t *DockerTail) consumeLine(line string) {
+	if t.Options.IsExclude(line) || !t.Options.IsInclude(line) {
+		return
+	}
+
+	msg := t.Options.HighlightMatchedString(line)
+
+	if t.Options.Timestamps {
+		fmt.Println("IS TS")
+		//updatedTs, err := t.Options.UpdateTimezoneAndFormat(rfc3339Nano)
+		//if err != nil {
+		//	t.Print(fmt.Sprintf("[%v] %s", err, line))
+		//	return
+		//}
+		//msg = updatedTs + " " + msg
+	}
+
+	t.Print(msg)
+}
+
+func (t *DockerTail) Print(msg string) {
+	vm := Log{
+		Message:        msg,
+		NodeName:       "",
+		Namespace:      "",
+		PodName:        "",
+		ContainerName:  t.ContainerName,
+		PodColor:       nil,
+		ContainerColor: t.containerColor,
+	}
+
+	var buf bytes.Buffer
+	if err := t.tmpl.Execute(&buf, vm); err != nil {
+		fmt.Fprintf(t.errOut, "expanding template failed: %s\n", err)
+		return
+	}
+
+	fmt.Fprint(t.out, buf.String())
 }
 
 func (t *DockerTail) printStarting() {

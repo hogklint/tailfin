@@ -12,7 +12,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 	// TOOD: Use container queries
 	filter := newDockerTargetFilter(dockerTargetFilterConfig{
 		containerFilter:        config.PodQuery,
-		containerExcludeFilter: config.ExcludePodQuery,
+		containerExcludeFilter: config.ExcludeContainerQuery,
 	})
 
 	added, err := WatchDockers(config, filter, client)
@@ -35,7 +35,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 			Follow:          config.Follow,
 			OnlyLogLines:    config.OnlyLogLines,
 		}
-		tail := NewDockerTail(client, target.Id, target.Names, config.Template, config.Out, config.ErrOut, options)
+		tail := NewDockerTail(client, target.Id, target.Name, target.Names, config.Template, config.Out, config.ErrOut, options)
 		tail.Start()
 	}
 	var wg sync.WaitGroup

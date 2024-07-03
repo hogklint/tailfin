@@ -1,13 +1,16 @@
 package stern
 
 import (
-	"github.com/docker/docker/api/types"
 	"regexp"
 	"strings"
+
+	"github.com/docker/docker/api/types"
+	"k8s.io/klog/v2"
 )
 
 type DockerTarget struct {
 	Id    string
+	Name  string
 	Names []string
 }
 
@@ -27,18 +30,19 @@ func newDockerTargetFilter(filterConfig dockerTargetFilterConfig) *dockerTargetF
 }
 
 func (f *dockerTargetFilter) visit(container types.Container, visitor func(t *DockerTarget)) {
-	matched := false
+	var matchedName string = ""
 	for _, name := range container.Names {
-		if f.config.containerFilter.MatchString(name) {
-			matched = true
+		if len(matchedName) == 0 && f.config.containerFilter.MatchString(name) {
+			matchedName = name
 		}
 		for _, re := range f.config.containerExcludeFilter {
 			if re.MatchString(name) {
+				klog.V(7).InfoS("Container matches exclude filter", "id", container.ID, "names", container.Names, "excludeFilter", re)
 				return
 			}
 		}
 	}
-	if !matched {
+	if len(matchedName) == 0 {
 		return
 	}
 
@@ -48,6 +52,7 @@ func (f *dockerTargetFilter) visit(container types.Container, visitor func(t *Do
 	}
 	t := &DockerTarget{
 		Id:    container.ID,
+		Name:  strings.TrimPrefix(matchedName, "/"),
 		Names: fixedNames,
 	}
 
