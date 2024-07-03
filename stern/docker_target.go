@@ -3,6 +3,7 @@ package stern
 import (
 	"github.com/docker/docker/api/types"
 	"regexp"
+	"strings"
 )
 
 type DockerTarget struct {
@@ -41,9 +42,13 @@ func (f *dockerTargetFilter) visit(container types.Container, visitor func(t *Do
 		return
 	}
 
+	fixedNames := make([]string, len(container.Names))
+	for i, name := range container.Names {
+		fixedNames[i] = strings.TrimPrefix(name, "/")
+	}
 	t := &DockerTarget{
 		Id:    container.ID,
-		Names: container.Names,
+		Names: fixedNames,
 	}
 
 	visitor(t)
