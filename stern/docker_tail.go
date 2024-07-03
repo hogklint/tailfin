@@ -54,7 +54,7 @@ func (t *DockerTail) Start( /*ctx?*/ ) {
 }
 
 func (t *DockerTail) consumeRequest() error {
-	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Timestamps: false})
+	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Timestamps: true})
 	if err != nil {
 		panic(err)
 	}
@@ -75,20 +75,25 @@ func (t *DockerTail) consumeRequest() error {
 }
 
 func (t *DockerTail) consumeLine(line string) {
-	if t.Options.IsExclude(line) || !t.Options.IsInclude(line) {
+	rfc3339Nano, content, err := splitLogLine(line)
+	if err != nil {
+		t.Print(fmt.Sprintf("[%v] %s", err, line))
 		return
 	}
 
-	msg := t.Options.HighlightMatchedString(line)
+	if t.Options.IsExclude(content) || !t.Options.IsInclude(content) {
+		return
+	}
+
+	msg := t.Options.HighlightMatchedString(content)
 
 	if t.Options.Timestamps {
-		fmt.Println("IS TS")
-		//updatedTs, err := t.Options.UpdateTimezoneAndFormat(rfc3339Nano)
-		//if err != nil {
-		//	t.Print(fmt.Sprintf("[%v] %s", err, line))
-		//	return
-		//}
-		//msg = updatedTs + " " + msg
+		updatedTs, err := t.Options.UpdateTimezoneAndFormat(rfc3339Nano)
+		if err != nil {
+			t.Print(fmt.Sprintf("[%v] %s", err, line))
+			return
+		}
+		msg = updatedTs + " " + msg
 	}
 
 	t.Print(msg)
