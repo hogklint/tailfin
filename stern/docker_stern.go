@@ -15,7 +15,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 		containerExcludeFilter: config.ExcludeContainerQuery,
 	})
 
-	added, err := WatchDockers(config, filter, client)
+	added, err := WatchDockers(ctx, config, filter, client)
 	if err != nil {
 		fmt.Fprintf(config.ErrOut, "failed to list containers: %v\n", err)
 		return err
@@ -35,7 +35,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 			Follow:          config.Follow,
 			OnlyLogLines:    config.OnlyLogLines,
 		}
-		tail := NewDockerTail(client, target.Id, target.Name, target.Names, config.Template, config.Out, config.ErrOut, options)
+		tail := NewDockerTail(client, target.Id, target.Name, config.Template, config.Out, config.ErrOut, options)
 		tail.Start()
 	}
 	var wg sync.WaitGroup

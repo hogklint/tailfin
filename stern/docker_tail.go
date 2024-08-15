@@ -19,7 +19,6 @@ type DockerTail struct {
 	client         *dockerclient.Client
 	ContainerId    string
 	ContainerName  string
-	ContainerNames []string
 	containerColor *color.Color
 	Options        *TailOptions
 	tmpl           *template.Template
@@ -27,14 +26,13 @@ type DockerTail struct {
 	errOut         io.Writer
 }
 
-func NewDockerTail(client *dockerclient.Client, containerId, containerName string, containerNames []string, tmpl *template.Template, out, errOut io.Writer, options *TailOptions) *DockerTail {
+func NewDockerTail(client *dockerclient.Client, containerId, containerName string, tmpl *template.Template, out, errOut io.Writer, options *TailOptions) *DockerTail {
 	colors := colorList[colorIndex(containerId)]
 
 	return &DockerTail{
 		client:         client,
 		ContainerId:    containerId,
 		ContainerName:  containerName,
-		ContainerNames: containerNames,
 		Options:        options,
 		containerColor: colors[1],
 		tmpl:           tmpl,
@@ -116,14 +114,14 @@ func (t *DockerTail) Print(msg string) {
 		return
 	}
 
-	fmt.Fprint(t.out, buf.String())
+	//fmt.Fprint(t.out, buf.String())
 }
 
 func (t *DockerTail) printStarting() {
 	if !t.Options.OnlyLogLines {
 		g := color.New(color.FgHiGreen, color.Bold).SprintFunc()
 		c := t.containerColor.SprintFunc()
-		fmt.Fprintf(t.errOut, "%s › %s\n", g("+"), c(strings.Join(t.ContainerNames, ",")))
+		fmt.Fprintf(t.errOut, "%s › %s\n", g("+"), c(t.ContainerName))
 	}
 }
 
@@ -131,6 +129,6 @@ func (t *DockerTail) printStopping() {
 	if !t.Options.OnlyLogLines {
 		r := color.New(color.FgHiRed, color.Bold).SprintFunc()
 		c := t.containerColor.SprintFunc()
-		fmt.Fprintf(t.errOut, "%s › %s\n", r("-"), c(strings.Join(t.ContainerNames, ",")))
+		fmt.Fprintf(t.errOut, "%s › %s\n", r("-"), c(t.ContainerName))
 	}
 }

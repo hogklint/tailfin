@@ -2,16 +2,15 @@ package stern
 
 import (
 	"regexp"
-	"strings"
+	"sync"
 
 	"github.com/docker/docker/api/types"
 	"k8s.io/klog/v2"
 )
 
 type DockerTarget struct {
-	Id    string
-	Name  string
-	Names []string
+	Id   string
+	Name string
 }
 
 type dockerTargetFilterConfig struct {
@@ -21,6 +20,7 @@ type dockerTargetFilterConfig struct {
 
 type dockerTargetFilter struct {
 	config dockerTargetFilterConfig
+	mu     sync.RWMutex
 }
 
 func newDockerTargetFilter(filterConfig dockerTargetFilterConfig) *dockerTargetFilter {
@@ -29,32 +29,32 @@ func newDockerTargetFilter(filterConfig dockerTargetFilterConfig) *dockerTargetF
 	}
 }
 
-func (f *dockerTargetFilter) visit(container types.Container, visitor func(t *DockerTarget)) {
-	var matchedName string = ""
-	for _, name := range container.Names {
-		if len(matchedName) == 0 && f.config.containerFilter.MatchString(name) {
-			matchedName = name
-		}
-		for _, re := range f.config.containerExcludeFilter {
-			if re.MatchString(name) {
-				klog.V(7).InfoS("Container matches exclude filter", "id", container.ID, "names", container.Names, "excludeFilter", re)
-				return
-			}
-		}
-	}
-	if len(matchedName) == 0 {
+func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t *DockerTarget)) {
+	if !f.config.containerFilter.MatchString(container.Name) {
 		return
 	}
-
-	fixedNames := make([]string, len(container.Names))
-	for i, name := range container.Names {
-		fixedNames[i] = strings.TrimPrefix(name, "/")
-	}
-	t := &DockerTarget{
-		Id:    container.ID,
-		Name:  strings.TrimPrefix(matchedName, "/"),
-		Names: fixedNames,
+	for _, re := range f.config.containerExcludeFilter {
+		if re.MatchString(container.Name) {
+			klog.V(7).InfoS("Container matches exclude filter", "id", container.ID, "names", container.Name, "excludeFilter", re)
+			return
+		}
 	}
 
-	visitor(t)
+	target := &DockerTarget{
+		Id:   container.ID,
+		Name: container.Name,
+	}
+	visitor(target)
+}
+
+func (f *dockerTargetFilter) forget(podUID string) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	//for targetID, state := range f.targetStates {
+	//	if state.podUID == podUID {
+	//		klog.V(7).InfoS("Forget targetState", "target", targetID)
+	//		delete(f.targetStates, targetID)
+	//	}
+	//}
 }
