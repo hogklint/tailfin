@@ -19,6 +19,8 @@ type DockerTail struct {
 	client         *dockerclient.Client
 	ContainerId    string
 	ContainerName  string
+	StartedAt      string
+	FinishedAt     string
 	containerColor *color.Color
 	Options        *TailOptions
 	tmpl           *template.Template
@@ -26,13 +28,15 @@ type DockerTail struct {
 	errOut         io.Writer
 }
 
-func NewDockerTail(client *dockerclient.Client, containerId, containerName string, tmpl *template.Template, out, errOut io.Writer, options *TailOptions) *DockerTail {
+func NewDockerTail(client *dockerclient.Client, containerId, containerName, startedAt, finishedAt string, tmpl *template.Template, out, errOut io.Writer, options *TailOptions) *DockerTail {
 	colors := colorList[colorIndex(containerId)]
 
 	return &DockerTail{
 		client:         client,
 		ContainerId:    containerId,
 		ContainerName:  containerName,
+		StartedAt:      startedAt,
+		FinishedAt:     finishedAt,
 		Options:        options,
 		containerColor: colors[1],
 		tmpl:           tmpl,
@@ -52,7 +56,7 @@ func (t *DockerTail) Start( /*ctx?*/ ) {
 }
 
 func (t *DockerTail) consumeRequest() error {
-	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Timestamps: true})
+	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Timestamps: true, Since: t.FinishedAt})
 	if err != nil {
 		panic(err)
 	}
@@ -113,8 +117,7 @@ func (t *DockerTail) Print(msg string) {
 		fmt.Fprintf(t.errOut, "expanding template failed: %s\n", err)
 		return
 	}
-
-	//fmt.Fprint(t.out, buf.String())
+	fmt.Fprint(t.out, buf.String())
 }
 
 func (t *DockerTail) printStarting() {

@@ -2,6 +2,7 @@ package stern
 
 import (
 	"regexp"
+	"strings"
 	"sync"
 
 	"github.com/docker/docker/api/types"
@@ -9,8 +10,10 @@ import (
 )
 
 type DockerTarget struct {
-	Id   string
-	Name string
+	Id         string
+	Name       string
+	StartedAt  string
+	FinishedAt string
 }
 
 type dockerTargetFilterConfig struct {
@@ -41,8 +44,10 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 	}
 
 	target := &DockerTarget{
-		Id:   container.ID,
-		Name: container.Name,
+		Id:         container.ID,
+		Name:       strings.TrimPrefix(container.Name, "/"),
+		StartedAt:  container.State.StartedAt,
+		FinishedAt: container.State.FinishedAt,
 	}
 	visitor(target)
 }
