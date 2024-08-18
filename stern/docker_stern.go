@@ -9,7 +9,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 )
 
-func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config) error {
+func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerConfig) error {
 	newTailOptions := func() *TailOptions {
 		return &TailOptions{
 			Timestamps:      config.Timestamps,
@@ -33,7 +33,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 
 	// TOOD: Use container queries
 	filter := newDockerTargetFilter(dockerTargetFilterConfig{
-		containerFilter:        config.PodQuery,
+		containerFilter:        config.ContainerQuery,
 		containerExcludeFilter: config.ExcludeContainerQuery,
 	})
 

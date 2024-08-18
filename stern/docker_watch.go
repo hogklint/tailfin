@@ -11,7 +11,7 @@ import (
 	"k8s.io/klog/v2"
 )
 
-func WatchDockers(ctx context.Context, config *Config, filter *dockerTargetFilter, client *dockerclient.Client) (chan *DockerTarget, error) {
+func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTargetFilter, client *dockerclient.Client) (chan *DockerTarget, error) {
 	added := make(chan *DockerTarget)
 	go func() {
 		visitor := func(t *DockerTarget) {

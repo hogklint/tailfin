@@ -1,5 +1,3 @@
-//   Copyright 2016 Wercker Holding BV
-//
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
 //   You may obtain a copy of the License at
@@ -18,13 +16,12 @@ import (
 	"log"
 	"os"
 
-	"github.com/hogklint/tailfin/cmd"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"github.com/hogklint/tailfin/cmd/tailfincmd"
 )
 
 func main() {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr}
-	stern, err := cmd.NewSternCmd(streams)
+	streams := tailfincmd.IOStreams{Out: os.Stdout, ErrOut: os.Stderr}
+	stern, err := tailfincmd.NewTailfinCmd(streams)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,5 +1,3 @@
-//   Copyright 2016 Wercker Holding BV
-//
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
 //   You may obtain a copy of the License at
@@ -12,21 +10,13 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package cmd
+package tailfincmd
 
 import (
 	"context"
 	"encoding/json"
 	goflag "flag"
 	"fmt"
-	"io"
-	"os"
-	"regexp"
-	"strconv"
-	"strings"
-	"text/template"
-	"time"
-
 	"github.com/fatih/color"
 	"github.com/hogklint/tailfin/stern"
 	"github.com/mitchellh/go-homedir"
@@ -34,134 +24,103 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
+	"io"
 	"k8s.io/klog/v2"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"text/template"
+	"time"
 
 	// load all auth plugins
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	dockerclient "github.com/docker/docker/client"
 )
 
 // Use "~" to avoid exposing the user name in the help message
-var defaultConfigFilePath = "~/.config/stern/config.yaml"
+var defaultConfigFilePath = "~/.config/tailfin/config.yaml"
 
-type options struct {
-	configFlags *genericclioptions.ConfigFlags
-	genericclioptions.IOStreams
-
-	excludePod          []string
-	container           string
-	excludeContainer    []string
-	containerStates     []string
-	timestamps          string
-	timezone            string
-	since               time.Duration
-	namespaces          []string
-	exclude             []string
-	include             []string
-	highlight           []string
-	initContainers      bool
-	ephemeralContainers bool
-	allNamespaces       bool
-	selector            string
-	fieldSelector       string
-	tail                int64
-	color               string
-	version             bool
-	completion          string
-	template            string
-	templateFile        string
-	output              string
-	prompt              bool
-	podQuery            string
-	noFollow            bool
-	resource            string
-	verbosity           int
-	onlyLogLines        bool
-	maxLogRequests      int
-	node                string
-	configFilePath      string
-	showHiddenOptions   bool
-	stdin               bool
-	diffContainer       bool
-	podColors           []string
-	containerColors     []string
-
-	client       kubernetes.Interface
-	clientConfig clientcmd.ClientConfig
+type IOStreams struct {
+	Out    io.Writer
+	ErrOut io.Writer
 }
 
-func NewOptions(streams genericclioptions.IOStreams) *options {
-	configFlags := genericclioptions.NewConfigFlags(true)
-	// stern has its own namespace flag, so disable the one in configFlags
-	configFlags.Namespace = nil
+type options struct {
+	IOStreams
 
+	excludeContainer []string
+	timestamps       string
+	timezone         string
+	since            time.Duration
+	exclude          []string
+	include          []string
+	highlight        []string
+	tail             int64
+	color            string
+	version          bool
+	completion       string
+	template         string
+	templateFile     string
+	output           string
+	containerQuery   string
+	noFollow         bool
+	verbosity        int
+	onlyLogLines     bool
+	maxLogRequests   int
+	configFilePath   string
+	stdin            bool
+	containerColors  []string
+	//containerStates     []string
+	//selector            string
+	//compose            []string
+
+	dockerClient *dockerclient.Client
+}
+
+func NewOptions(streams IOStreams) *options {
 	return &options{
-		configFlags: configFlags,
-		IOStreams:   streams,
+		IOStreams: streams,
 
-		color:               "auto",
-		container:           ".*",
-		containerStates:     []string{stern.ALL_STATES},
-		initContainers:      true,
-		ephemeralContainers: true,
-		output:              "default",
-		since:               48 * time.Hour,
-		tail:                -1,
-		template:            "",
-		templateFile:        "",
-		timestamps:          "",
-		timezone:            "Local",
-		prompt:              false,
-		noFollow:            false,
-		maxLogRequests:      -1,
-		configFilePath:      defaultConfigFilePath,
+		color: "auto",
+		//containerStates:     []string{stern.ALL_STATES},
+		output:         "default",
+		since:          48 * time.Hour,
+		tail:           -1,
+		template:       "",
+		templateFile:   "",
+		timestamps:     "",
+		timezone:       "Local",
+		noFollow:       false,
+		maxLogRequests: -1,
+		configFilePath: defaultConfigFilePath,
 	}
 }
 
 func (o *options) Complete(args []string) error {
 	if len(args) > 0 {
-		if s := args[0]; strings.Contains(s, "/") {
-			o.resource = s
-		} else {
-			o.podQuery = s
-		}
+		o.containerQuery = args[0]
 	}
 
-	envVar, ok := os.LookupEnv("STERNCONFIG")
+	envVar, ok := os.LookupEnv("TAILFINCONFIG")
 	if ok {
 		o.configFilePath = envVar
 	}
 
-	o.clientConfig = o.configFlags.ToRawKubeConfigLoader()
-
-	restConfig, err := o.configFlags.ToRESTConfig()
+	var err error
+	o.dockerClient, err = dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
 	if err != nil {
-		return err
-	}
-
-	o.client = kubernetes.NewForConfigOrDie(restConfig)
-
-	if len(o.namespaces) == 0 {
-		namespace, _, err := o.clientConfig.Namespace()
-		if err != nil {
-			return err
-		}
-		o.namespaces = []string{namespace}
+		panic(err)
 	}
 
 	return nil
 }
 
 func (o *options) Validate() error {
-	if !o.prompt && o.podQuery == "" && o.resource == "" && o.selector == "" && o.fieldSelector == "" && !o.stdin {
-		return errors.New("One of pod-query, --selector, --field-selector, --prompt or --stdin is required")
-	}
-	if o.selector != "" && o.resource != "" {
-		return errors.New("--selector and the <resource>/<name> query can not be set at the same time")
+	if o.containerQuery == "" && !o.stdin {
+		// TODO: Add image matching
+		return errors.New("One of container-query or --stdin is required")
 	}
 
 	return nil
@@ -175,7 +134,7 @@ func (o *options) Run(cmd *cobra.Command) error {
 		return err
 	}
 
-	config, err := o.sternConfig()
+	config, err := o.tailfinConfig()
 	if err != nil {
 		return err
 	}
@@ -183,29 +142,13 @@ func (o *options) Run(cmd *cobra.Command) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if o.prompt {
-		if err := promptHandler(ctx, o.client, config, o.Out); err != nil {
-			return err
-		}
-	}
-
-	return stern.Run(ctx, o.client, config)
+	return stern.RunDocker(ctx, o.dockerClient, config)
 }
 
-func (o *options) sternConfig() (*stern.Config, error) {
-	pod, err := regexp.Compile(o.podQuery)
+func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
+	container, err := regexp.Compile(o.containerQuery)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to compile regular expression from query")
-	}
-
-	excludePod, err := compileREs(o.excludePod)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to compile regular expression for excluded pod query")
-	}
-
-	container, err := regexp.Compile(o.container)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to compile regular expression for container query")
 	}
 
 	excludeContainer, err := compileREs(o.excludeContainer)
@@ -228,28 +171,6 @@ func (o *options) sternConfig() (*stern.Config, error) {
 		return nil, errors.Wrap(err, "failed to compile regular expression for highlight filter")
 	}
 
-	containerStates := []stern.ContainerState{}
-	for _, containerStateStr := range makeUnique(o.containerStates) {
-		containerState, err := stern.NewContainerState(containerStateStr)
-		if err != nil {
-			return nil, err
-		}
-		containerStates = append(containerStates, containerState)
-	}
-
-	labelSelector := labels.Everything()
-	if o.selector != "" {
-		labelSelector, err = labels.Parse(o.selector)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to parse selector as label selector")
-		}
-	}
-
-	fieldSelector, err := o.generateFieldSelector()
-	if err != nil {
-		return nil, err
-	}
-
 	var tailLines *int64
 	if o.tail != -1 {
 		tailLines = &o.tail
@@ -269,8 +190,6 @@ func (o *options) sternConfig() (*stern.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	namespaces := makeUnique(o.namespaces)
 
 	var timestampFormat string
 	switch o.timestamps {
@@ -298,33 +217,22 @@ func (o *options) sternConfig() (*stern.Config, error) {
 		}
 	}
 
-	return &stern.Config{
-		Namespaces:            namespaces,
-		PodQuery:              pod,
-		ExcludePodQuery:       excludePod,
+	return &stern.DockerConfig{
+		ContainerQuery:        container,
 		Timestamps:            timestampFormat != "",
 		TimestampFormat:       timestampFormat,
 		Location:              location,
-		ContainerQuery:        container,
 		ExcludeContainerQuery: excludeContainer,
-		ContainerStates:       containerStates,
 		Exclude:               exclude,
 		Include:               include,
 		Highlight:             highlight,
-		InitContainers:        o.initContainers,
-		EphemeralContainers:   o.ephemeralContainers,
 		Since:                 o.since,
-		AllNamespaces:         o.allNamespaces,
-		LabelSelector:         labelSelector,
-		FieldSelector:         fieldSelector,
 		TailLines:             tailLines,
 		Template:              template,
 		Follow:                !o.noFollow,
-		Resource:              o.resource,
 		OnlyLogLines:          o.onlyLogLines,
 		MaxLogRequests:        maxLogRequests,
 		Stdin:                 o.stdin,
-		DiffContainer:         o.diffContainer,
 
 		Out:    o.Out,
 		ErrOut: o.ErrOut,
@@ -345,8 +253,8 @@ func (o *options) setVerbosity() error {
 }
 
 func (o *options) setColorList() error {
-	if len(o.podColors) > 0 || len(o.containerColors) > 0 {
-		return stern.SetColorList(o.podColors, o.containerColors)
+	if len(o.containerColors) > 0 {
+		return stern.SetColorList([]string{}, o.containerColors)
 	}
 	return nil
 }
@@ -413,30 +321,17 @@ func (o *options) overrideFlagSetDefaultFromConfig(fs *pflag.FlagSet) error {
 	return nil
 }
 
-// AddFlags adds all the flags used by stern.
+// AddFlags adds all the flags used by tailfin.
 func (o *options) AddFlags(fs *pflag.FlagSet) {
-	o.addKubernetesFlags(fs)
-
-	fs.BoolVarP(&o.allNamespaces, "all-namespaces", "A", o.allNamespaces, "If present, tail across all namespaces. A specific namespace is ignored even if specified with --namespace.")
 	fs.StringVar(&o.color, "color", o.color, "Force set color output. 'auto':  colorize if tty attached, 'always': always colorize, 'never': never colorize.")
 	fs.StringVar(&o.completion, "completion", o.completion, "Output stern command-line completion code for the specified shell. Can be 'bash', 'zsh' or 'fish'.")
-	fs.StringVarP(&o.container, "container", "c", o.container, "Container name when multiple containers in pod. (regular expression)")
-	fs.StringSliceVar(&o.containerStates, "container-state", o.containerStates, "Tail containers with state in running, waiting, terminated, or all. 'all' matches all container states. To specify multiple states, repeat this or set comma-separated value.")
 	fs.StringArrayVarP(&o.exclude, "exclude", "e", o.exclude, "Log lines to exclude. (regular expression)")
-	fs.StringArrayVarP(&o.excludeContainer, "exclude-container", "E", o.excludeContainer, "Container name to exclude when multiple containers in pod. (regular expression)")
-	fs.StringArrayVar(&o.excludePod, "exclude-pod", o.excludePod, "Pod name to exclude. (regular expression)")
+	fs.StringArrayVarP(&o.excludeContainer, "exclude-container", "E", o.excludeContainer, "Container name to exclude. (regular expression)")
 	fs.BoolVar(&o.noFollow, "no-follow", o.noFollow, "Exit when all logs have been shown.")
 	fs.StringArrayVarP(&o.include, "include", "i", o.include, "Log lines to include. (regular expression)")
 	fs.StringArrayVarP(&o.highlight, "highlight", "H", o.highlight, "Log lines to highlight. (regular expression)")
-	fs.BoolVar(&o.initContainers, "init-containers", o.initContainers, "Include or exclude init containers.")
-	fs.BoolVar(&o.ephemeralContainers, "ephemeral-containers", o.ephemeralContainers, "Include or exclude ephemeral containers.")
-	fs.StringSliceVarP(&o.namespaces, "namespace", "n", o.namespaces, "Kubernetes namespace to use. Default to namespace configured in kubernetes context. To specify multiple namespaces, repeat this or set comma-separated value.")
-	fs.StringVar(&o.node, "node", o.node, "Node name to filter on.")
 	fs.IntVar(&o.maxLogRequests, "max-log-requests", o.maxLogRequests, "Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow")
 	fs.StringVarP(&o.output, "output", "o", o.output, "Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]")
-	fs.BoolVarP(&o.prompt, "prompt", "p", o.prompt, "Toggle interactive prompt for selecting 'app.kubernetes.io/instance' label values.")
-	fs.StringVarP(&o.selector, "selector", "l", o.selector, "Selector (label query) to filter on. If present, default to \".*\" for the pod-query.")
-	fs.StringVar(&o.fieldSelector, "field-selector", o.fieldSelector, "Selector (field query) to filter on. If present, default to \".*\" for the pod-query.")
 	fs.DurationVarP(&o.since, "since", "s", o.since, "Return logs newer than a relative duration like 5s, 2m, or 3h.")
 	fs.Int64Var(&o.tail, "tail", o.tail, "The number of lines from the end of the logs to show. Defaults to -1, showing all logs.")
 	fs.StringVar(&o.template, "template", o.template, "Template to use for log lines, leave empty to use --output flag.")
@@ -444,44 +339,13 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVarP(&o.timestamps, "timestamps", "t", o.timestamps, "Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.")
 	fs.StringVar(&o.timezone, "timezone", o.timezone, "Set timestamps to specific timezone.")
 	fs.BoolVar(&o.onlyLogLines, "only-log-lines", o.onlyLogLines, "Print only log lines")
-	fs.StringVar(&o.configFilePath, "config", o.configFilePath, "Path to the stern config file")
+	fs.StringVar(&o.configFilePath, "config", o.configFilePath, "Path to the tailfin config file")
 	fs.IntVar(&o.verbosity, "verbosity", o.verbosity, "Number of the log level verbosity")
 	fs.BoolVarP(&o.version, "version", "v", o.version, "Print the version and exit.")
-	fs.BoolVar(&o.showHiddenOptions, "show-hidden-options", o.showHiddenOptions, "Print a list of hidden options.")
 	fs.BoolVar(&o.stdin, "stdin", o.stdin, "Parse logs from stdin. All Kubernetes related flags are ignored when it is set.")
-	fs.BoolVarP(&o.diffContainer, "diff-container", "d", o.diffContainer, "Display different colors for different containers.")
-	fs.StringSliceVar(&o.podColors, "pod-colors", o.podColors, "Specifies the colors used to highlight pod names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., \"91,92,93,94,95,96\".")
 	fs.StringSliceVar(&o.containerColors, "container-colors", o.containerColors, "Specifies the colors used to highlight container names. Use the same format as --pod-colors. Defaults to the values of --pod-colors if omitted, and must match its length.")
 
 	fs.Lookup("timestamps").NoOptDefVal = "default"
-}
-
-func (o *options) addKubernetesFlags(fs *pflag.FlagSet) {
-	flagset := pflag.NewFlagSet("", pflag.ExitOnError)
-	o.configFlags.AddFlags(flagset)
-	flagset.VisitAll(func(f *pflag.Flag) {
-		// Hide Kubernetes flags except some
-		if !(f.Name == "kubeconfig" || f.Name == "context") {
-			f.Hidden = true
-		}
-
-		// `server` flag in configFlags has `s` shorthand, which is used by stern
-		// as shorthand for `since` flag, so do not use it.
-		if f.Name == "server" {
-			f.Shorthand = ""
-		}
-	})
-	fs.AddFlagSet(flagset)
-}
-
-func (o *options) outputHiddenOptions() {
-	fs := pflag.NewFlagSet("", pflag.ExitOnError)
-	o.AddFlags(fs)
-	fs.VisitAll(func(f *pflag.Flag) {
-		f.Hidden = !f.Hidden
-	})
-	fmt.Println("The following options can also be used in stern:")
-	fs.PrintDefaults()
 }
 
 func (o *options) generateTemplate() (*template.Template, error) {
@@ -496,26 +360,15 @@ func (o *options) generateTemplate() (*template.Template, error) {
 	if t == "" {
 		switch o.output {
 		case "default":
-			t = "{{color .PodColor .PodName}} {{color .ContainerColor .ContainerName}} {{.Message}}"
-			if o.allNamespaces || len(o.namespaces) > 1 {
-				t = fmt.Sprintf("{{color .PodColor .Namespace}} %s", t)
-			}
+			t = "{{if .ComposeProject}}{{color .ComposeColor .ComposeProject}} {{end}}{{color .ContainerColor .ContainerName}} {{.Message}}"
 		case "raw":
 			t = "{{.Message}}"
 		case "json":
 			t = "{{json .}}"
 		case "extjson":
-			t = "\"pod\": \"{{color .PodColor .PodName}}\", \"container\": \"{{color .ContainerColor .ContainerName}}\", \"message\": {{extjson .Message}}"
-			if o.allNamespaces {
-				t = fmt.Sprintf("\"namespace\": \"{{color .PodColor .Namespace}}\", %s", t)
-			}
-			t = fmt.Sprintf("{%s}", t)
+			t = "{\"compose\": \"{{if .ComposeProject}}{{color .ComposeColor .ComposeProject}}{{end}}\", \"container\": \"{{color .ContainerColor .ContainerName}}\", \"message\": {{extjson .Message}}}"
 		case "ppextjson":
-			t = "  \"pod\": \"{{color .PodColor .PodName}}\",\n  \"container\": \"{{color .ContainerColor .ContainerName}}\",\n  \"message\": {{extjson .Message}}"
-			if o.allNamespaces {
-				t = fmt.Sprintf("  \"namespace\": \"{{color .PodColor .Namespace}}\",\n%s", t)
-			}
-			t = fmt.Sprintf("{\n%s\n}", t)
+			t = "{\n  \"compose\": \"{{if .ComposeProject}}{{color .ComposeColor .ComposeProject}}{{end}}\",\n  \"container\": \"{{color .ContainerColor .ContainerName}}\",\n  \"message\": {{extjson .Message}}\n}"
 		default:
 			return nil, errors.New("output should be one of 'default', 'raw', 'json', 'extjson', and 'ppextjson'")
 		}
@@ -647,31 +500,32 @@ func (o *options) generateTemplate() (*template.Template, error) {
 	return template, err
 }
 
-func (o *options) generateFieldSelector() (fields.Selector, error) {
-	var queries []string
-	if o.fieldSelector != "" {
-		queries = append(queries, o.fieldSelector)
-	}
-	if o.node != "" {
-		queries = append(queries, fmt.Sprintf("spec.nodeName=%s", o.node))
-	}
-	if len(queries) == 0 {
-		return fields.Everything(), nil
-	}
+// TODO: Adjust to container filter? Maybe this is where image filtering is done
+//func (o *options) generateFieldSelector() (fields.Selector, error) {
+//	var queries []string
+//	if o.fieldSelector != "" {
+//		queries = append(queries, o.fieldSelector)
+//	}
+//	if o.node != "" {
+//		queries = append(queries, fmt.Sprintf("spec.nodeName=%s", o.node))
+//	}
+//	if len(queries) == 0 {
+//		return fields.Everything(), nil
+//	}
+//
+//	fieldSelector, err := fields.ParseSelector(strings.Join(queries, ","))
+//	if err != nil {
+//		return nil, errors.Wrap(err, "failed to parse selector as field selector")
+//	}
+//	return fieldSelector, nil
+//}
 
-	fieldSelector, err := fields.ParseSelector(strings.Join(queries, ","))
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to parse selector as field selector")
-	}
-	return fieldSelector, nil
-}
-
-func NewSternCmd(stream genericclioptions.IOStreams) (*cobra.Command, error) {
-	o := NewOptions(stream)
+func NewTailfinCmd(streams IOStreams) (*cobra.Command, error) {
+	o := NewOptions(streams)
 
 	cmd := &cobra.Command{
-		Use:   "stern pod-query",
-		Short: "Tail multiple pods and containers from Kubernetes",
+		Use:   "tailfin container-query",
+		Short: "Tail multiple docker containers",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Output version information and exit
 			if o.version {
@@ -682,11 +536,6 @@ func NewSternCmd(stream genericclioptions.IOStreams) (*cobra.Command, error) {
 			// Output shell completion code for the specified shell and exit
 			if o.completion != "" {
 				return runCompletion(o.completion, cmd, o.Out)
-			}
-
-			if o.showHiddenOptions {
-				o.outputHiddenOptions()
-				return nil
 			}
 
 			if err := o.Complete(args); err != nil {
@@ -708,7 +557,7 @@ func NewSternCmd(stream genericclioptions.IOStreams) (*cobra.Command, error) {
 		ValidArgsFunction: queryCompletionFunc(o),
 	}
 
-	cmd.SetUsageTemplate(cmd.UsageTemplate() + "\nUse \"stern --show-hidden-options\" for a list of hidden command-line options.\n")
+	cmd.SetUsageTemplate(cmd.UsageTemplate() + "\nUse \"tailfin --show-hidden-options\" for a list of hidden command-line options.\n")
 
 	o.AddFlags(cmd.Flags())
 

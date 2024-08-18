@@ -9,7 +9,7 @@ import (
 	dockerclient "github.com/docker/docker/client"
 )
 
-func ListDockers(ctx context.Context, config *Config, client *dockerclient.Client, filter *dockerTargetFilter, visitor func(t *DockerTarget)) ([]types.ContainerJSON, error) {
+func ListDockers(ctx context.Context, config *DockerConfig, client *dockerclient.Client, filter *dockerTargetFilter, visitor func(t *DockerTarget)) ([]types.ContainerJSON, error) {
 	opts := container.ListOptions{All: true}
 	containers, err := client.ContainerList(ctx, opts)
 	if err != nil {

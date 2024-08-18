@@ -1,5 +1,3 @@
-//   Copyright 2016 Wercker Holding BV
-//
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
 //   You may obtain a copy of the License at
@@ -12,24 +10,27 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-package main
+package tailfincmd
 
 import (
-	"log"
-	"os"
-
-	"github.com/hogklint/tailfin/cmd"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"fmt"
+	"io"
 )
 
-func main() {
-	streams := genericclioptions.IOStreams{Out: os.Stdout, ErrOut: os.Stderr}
-	stern, err := cmd.NewSternCmd(streams)
-	if err != nil {
-		log.Fatal(err)
+var (
+	version = "dev"
+	commit  = ""
+	date    = ""
+)
+
+func outputVersionInfo(out io.Writer) {
+	fmt.Fprintf(out, "version: %s\n", version)
+
+	if commit != "" {
+		fmt.Fprintf(out, "commit: %s\n", commit)
 	}
 
-	if err := stern.Execute(); err != nil {
-		os.Exit(1)
+	if date != "" {
+		fmt.Fprintf(out, "built at: %s\n", date)
 	}
 }

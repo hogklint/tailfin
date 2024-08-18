@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/hogklint/tailfin/stern"
 	"github.com/spf13/pflag"
-	"github.com/stern/stern/stern"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/cli-runtime/pkg/genericclioptions"

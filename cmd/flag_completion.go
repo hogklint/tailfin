@@ -21,9 +21,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/hogklint/tailfin/stern"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/stern/stern/stern"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )

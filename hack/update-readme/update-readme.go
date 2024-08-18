@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hogklint/tailfin/cmd"
 	"github.com/spf13/pflag"
-	"github.com/stern/stern/cmd"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
