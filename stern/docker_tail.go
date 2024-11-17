@@ -8,6 +8,7 @@ import (
 	"io"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/fatih/color"
 	"k8s.io/klog/v2"
@@ -58,6 +59,19 @@ func (t *DockerTail) Start( /*ctx?*/ ) {
 	}
 }
 
+func (t *DockerTail) getSinceTime() string {
+	started, err1 := time.Parse(time.RFC3339, t.StartedAt)
+	finished, err2 := time.Parse(time.RFC3339, t.FinishedAt)
+	if err1 != nil || err2 != nil {
+		return t.StartedAt
+	}
+
+	if finished.Before(started) {
+		return t.FinishedAt
+	}
+	return t.StartedAt
+}
+
 func (t *DockerTail) consumeRequest() error {
 	logs, err := t.client.ContainerLogs(
 		context.Background(),
@@ -67,7 +81,7 @@ func (t *DockerTail) consumeRequest() error {
 			ShowStderr: true,
 			Follow:     true,
 			Timestamps: true,
-			Since:      t.FinishedAt,
+			Since:      t.getSinceTime(),
 		},
 	)
 	if err != nil {
