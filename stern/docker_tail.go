@@ -48,18 +48,30 @@ func NewDockerTail(client *dockerclient.Client, containerId, containerName, star
 
 func (t *DockerTail) Start( /*ctx?*/ ) {
 	t.printStarting()
+	defer t.printStopping()
+
 	err := t.consumeRequest()
 	if err != nil {
-		fmt.Fprintf(t.errOut, "Some error occured: %v\n", err)
+		fmt.Fprintf(t.errOut, "tailing container '%v' failed: %v\n", t.ContainerName, err)
+		klog.V(7).ErrorS(err, "Could not fetch logs for container", "name", t.ContainerName, "id", t.ContainerId)
 		return
 	}
-	t.printStopping()
 }
 
 func (t *DockerTail) consumeRequest() error {
-	logs, err := t.client.ContainerLogs(context.Background(), t.ContainerId, container.LogsOptions{ShowStdout: true, ShowStderr: true, Follow: true, Timestamps: true, Since: t.FinishedAt})
+	logs, err := t.client.ContainerLogs(
+		context.Background(),
+		t.ContainerId,
+		container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     true,
+			Timestamps: true,
+			Since:      t.FinishedAt,
+		},
+	)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	r := bufio.NewReader(logs)
