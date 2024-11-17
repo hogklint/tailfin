@@ -3,12 +3,34 @@ package stern
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 
 	dockerclient "github.com/docker/docker/client"
 )
 
 func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config) error {
+	newTailOptions := func() *TailOptions {
+		return &TailOptions{
+			Timestamps:      config.Timestamps,
+			TimestampFormat: config.TimestampFormat,
+			Location:        config.Location,
+			SinceSeconds:    nil,
+			Exclude:         config.Exclude,
+			Include:         config.Include,
+			Highlight:       config.Highlight,
+			Namespace:       false,
+			TailLines:       config.TailLines,
+			Follow:          config.Follow,
+			OnlyLogLines:    config.OnlyLogLines,
+		}
+	}
+
+	if config.Stdin {
+		tail := NewFileTail(config.Template, os.Stdin, config.Out, config.ErrOut, newTailOptions())
+		return tail.Start()
+	}
+
 	// TOOD: Use container queries
 	filter := newDockerTargetFilter(dockerTargetFilterConfig{
 		containerFilter:        config.PodQuery,
@@ -22,20 +44,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 	}
 
 	tailTarget := func(target *DockerTarget) {
-		options := &TailOptions{
-			Timestamps:      config.Timestamps,
-			TimestampFormat: config.TimestampFormat,
-			Location:        config.Location,
-			SinceSeconds:    nil,
-			Exclude:         config.Exclude,
-			Include:         config.Include,
-			Highlight:       config.Highlight,
-			Namespace:       false,
-			TailLines:       config.TailLines,
-			Follow:          config.Follow,
-			OnlyLogLines:    config.OnlyLogLines,
-		}
-		tail := NewDockerTail(client, target.Id, target.Name, target.StartedAt, target.FinishedAt, config.Template, config.Out, config.ErrOut, options)
+		tail := NewDockerTail(client, target.Id, target.Name, target.StartedAt, target.FinishedAt, config.Template, config.Out, config.ErrOut, newTailOptions())
 		tail.Start()
 	}
 	var wg sync.WaitGroup
