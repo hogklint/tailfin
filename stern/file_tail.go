@@ -9,6 +9,7 @@ import (
 	"text/template"
 
 	"github.com/fatih/color"
+	"k8s.io/klog/v2"
 )
 
 type FileTail struct {
@@ -71,6 +72,7 @@ func (t *FileTail) Print(msg string) {
 	var buf bytes.Buffer
 	if err := t.tmpl.Execute(&buf, vm); err != nil {
 		fmt.Fprintf(t.errOut, "expanding template failed: %s\n", err)
+		klog.V(7).ErrorS(err, "Template failure", "message", msg)
 		return
 	}
 
