@@ -2,7 +2,6 @@ package stern
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -19,6 +18,7 @@ func WatchDockers(ctx context.Context, config *Config, filter *dockerTargetFilte
 			klog.V(7).InfoS("New container", "id", t.Id, "name", t.Name)
 			added <- t
 		}
+		// Start watching for container events
 		args := filters.NewArgs()
 		args.Add("event", string(events.ActionStop))
 		args.Add("event", string(events.ActionStart))
@@ -27,6 +27,7 @@ func WatchDockers(ctx context.Context, config *Config, filter *dockerTargetFilte
 		watcher, errc := client.Events(ctx, opts)
 		defer cancel()
 
+		// Then list all current containers
 		containers, err := ListDockers(ctx, config, client, filter, visitor)
 		if err != nil {
 			return
@@ -42,7 +43,7 @@ func WatchDockers(ctx context.Context, config *Config, filter *dockerTargetFilte
 				case events.ActionStart:
 					container, err := client.ContainerInspect(ctx, e.ID)
 					if err != nil {
-						fmt.Fprintf(config.ErrOut, "failed to inspect container id=%s: %v\n", e.ID, err)
+						klog.V(7).ErrorS(err, "failed to inspect container", "id", e.ID)
 						continue
 					}
 					filter.visit(container, visitor)
