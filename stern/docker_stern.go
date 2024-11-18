@@ -44,7 +44,18 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *Config)
 	}
 
 	tailTarget := func(target *DockerTarget) {
-		tail := NewDockerTail(client, target.Id, target.Name, target.StartedAt, target.FinishedAt, config.Template, config.Out, config.ErrOut, newTailOptions())
+		tail := NewDockerTail(
+			client,
+			target.Id,
+			target.Name,
+			target.ComposeProject,
+			target.StartedAt,
+			target.FinishedAt,
+			config.Template,
+			config.Out,
+			config.ErrOut,
+			newTailOptions(),
+		)
 		tail.Start()
 	}
 	var wg sync.WaitGroup

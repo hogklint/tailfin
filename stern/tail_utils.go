@@ -29,7 +29,11 @@ type Log struct {
 	// ContainerName of the container
 	ContainerName string `json:"containerName"`
 
+	// Docker compose project name
+	ComposeProject string `json:"composeProject"`
+
 	PodColor       *color.Color `json:"-"`
+	ComposeColor   *color.Color `json:"-"`
 	ContainerColor *color.Color `json:"-"`
 }
 

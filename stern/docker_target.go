@@ -10,10 +10,11 @@ import (
 )
 
 type DockerTarget struct {
-	Id         string
-	Name       string
-	StartedAt  string
-	FinishedAt string
+	Id             string
+	Name           string
+	StartedAt      string
+	FinishedAt     string
+	ComposeProject string
 }
 
 type dockerTargetFilterConfig struct {
@@ -43,11 +44,21 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		}
 	}
 
+	composeProject := ""
+	containerName := strings.TrimPrefix(container.Name, "/")
+	if p, ok := container.Config.Labels["com.docker.compose.project"]; ok {
+		composeProject = p
+	}
+	if s, ok := container.Config.Labels["com.docker.compose.service"]; ok {
+		containerName = s
+	}
+
 	target := &DockerTarget{
-		Id:         container.ID,
-		Name:       strings.TrimPrefix(container.Name, "/"),
-		StartedAt:  container.State.StartedAt,
-		FinishedAt: container.State.FinishedAt,
+		Id:             container.ID,
+		Name:           containerName,
+		ComposeProject: composeProject,
+		StartedAt:      container.State.StartedAt,
+		FinishedAt:     container.State.FinishedAt,
 	}
 	visitor(target)
 }
