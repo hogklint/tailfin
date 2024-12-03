@@ -557,8 +557,6 @@ func NewTailfinCmd(streams IOStreams) (*cobra.Command, error) {
 		ValidArgsFunction: queryCompletionFunc(o),
 	}
 
-	cmd.SetUsageTemplate(cmd.UsageTemplate() + "\nUse \"tailfin --show-hidden-options\" for a list of hidden command-line options.\n")
-
 	o.AddFlags(cmd.Flags())
 
 	if err := registerCompletionFuncForFlags(cmd, o); err != nil {

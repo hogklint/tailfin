@@ -17,16 +17,15 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/hogklint/tailfin/stern"
 	"github.com/spf13/cobra"
 )
 
 var flagChoices = map[string][]string{
-	"color":           {"always", "never", "auto"},
-	"completion":      {"bash", "zsh", "fish"},
-	"container-state": {stern.RUNNING, stern.WAITING, stern.TERMINATED, stern.ALL_STATES},
-	"output":          {"default", "raw", "json", "extjson", "ppextjson"},
-	"timestamps":      {"default", "short"},
+	"color":      {"always", "never", "auto"},
+	"completion": {"bash", "zsh", "fish"},
+	//"container-state": {stern.RUNNING, stern.WAITING, stern.TERMINATED, stern.ALL_STATES},
+	"output":     {"default", "raw", "json", "extjson", "ppextjson"},
+	"timestamps": {"default", "short"},
 }
 
 func runCompletion(shell string, cmd *cobra.Command, out io.Writer) error {
@@ -64,46 +63,13 @@ func runCompletionZsh(cmd *cobra.Command, out io.Writer) error {
 }
 
 func registerCompletionFuncForFlags(cmd *cobra.Command, o *options) error {
+	for flag, choices := range flagChoices {
+		if err := cmd.RegisterFlagCompletionFunc(flag,
+			cobra.FixedCompletions(choices, cobra.ShellCompDirectiveNoFileComp)); err != nil {
+			return err
+		}
+	}
 	return nil
-}
-
-// namespaceCompletionFunc is a completion function that completes namespaces
-// that match the toComplete prefix.
-func namespaceCompletionFunc(o *options) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if err := o.Complete(nil); err != nil {
-			return compError(err)
-		}
-
-		var comps []string
-		return comps, cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-// nodeCompletionFunc is a completion function that completes node names
-// that match the toComplete prefix.
-func nodeCompletionFunc(o *options) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if err := o.Complete(nil); err != nil {
-			return compError(err)
-		}
-
-		var comps []string
-		return comps, cobra.ShellCompDirectiveNoFileComp
-	}
-}
-
-// contextCompletionFunc is a completion function that completes contexts
-// that match the toComplete prefix.
-func contextCompletionFunc(o *options) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if err := o.Complete(nil); err != nil {
-			return compError(err)
-		}
-
-		var comps []string
-		return comps, cobra.ShellCompDirectiveNoFileComp
-	}
 }
 
 // queryCompletionFunc is a completion function that completes a resource
