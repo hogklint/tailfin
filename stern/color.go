@@ -33,18 +33,18 @@ func SetColorList(podColors, containerColors []string) error {
 	return nil
 }
 
-func parseColors(podColors, containerColors []string) ([][2]*color.Color, error) {
-	if len(podColors) == 0 {
-		return nil, errors.New("pod-colors must not be empty")
+func parseColors(composeColors, containerColors []string) ([][2]*color.Color, error) {
+	if len(composeColors) == 0 {
+		return nil, errors.New("compose-colors must not be empty")
 	}
 	if len(containerColors) == 0 {
-		// if containerColors is empty, use podColors as containerColors
-		return createColorPairs(podColors, podColors)
+		// if containerColors is empty, use composeColors as containerColors
+		return createColorPairs(composeColors, composeColors)
 	}
-	if len(containerColors) != len(podColors) {
-		return nil, errors.New("pod-colors and container-colors must have the same length")
+	if len(containerColors) != len(composeColors) {
+		return nil, errors.New("compose-colors and container-colors must have the same length")
 	}
-	return createColorPairs(podColors, containerColors)
+	return createColorPairs(composeColors, containerColors)
 }
 
 func createColorPairs(podColors, containerColors []string) ([][2]*color.Color, error) {

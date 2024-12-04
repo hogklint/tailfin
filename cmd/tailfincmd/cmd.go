@@ -72,6 +72,7 @@ type options struct {
 	configFilePath   string
 	stdin            bool
 	containerColors  []string
+	composeColors    []string
 	//containerStates     []string
 	//selector            string
 	//compose            []string
@@ -253,8 +254,8 @@ func (o *options) setVerbosity() error {
 }
 
 func (o *options) setColorList() error {
-	if len(o.containerColors) > 0 {
-		return stern.SetColorList([]string{}, o.containerColors)
+	if len(o.containerColors) > 0 || len(o.composeColors) > 0 {
+		return stern.SetColorList(o.composeColors, o.containerColors)
 	}
 	return nil
 }
@@ -343,7 +344,8 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&o.verbosity, "verbosity", o.verbosity, "Number of the log level verbosity")
 	fs.BoolVarP(&o.version, "version", "v", o.version, "Print the version and exit.")
 	fs.BoolVar(&o.stdin, "stdin", o.stdin, "Parse logs from stdin. All Kubernetes related flags are ignored when it is set.")
-	fs.StringSliceVar(&o.containerColors, "container-colors", o.containerColors, "Specifies the colors used to highlight container names. Use the same format as --pod-colors. Defaults to the values of --pod-colors if omitted, and must match its length.")
+	fs.StringSliceVar(&o.containerColors, "compose-colors", o.containerColors, "Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., \"91,92,93,94,95,96\".")
+	fs.StringSliceVar(&o.composeColors, "container-colors", o.composeColors, "Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.")
 
 	fs.Lookup("timestamps").NoOptDefVal = "default"
 }
