@@ -3,6 +3,7 @@ SHELL:=/usr/bin/env bash
 .PHONY: build
 build:
 	go build -o dist/stern .
+	go build -o dist/tailfin ./cmd/tailfin
 
 TOOLS_BIN_DIR := $(CURDIR)/hack/tools/bin
 GORELEASER_VERSION ?= v1.25.1
