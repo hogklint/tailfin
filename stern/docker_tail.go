@@ -126,7 +126,7 @@ func (t *DockerTail) consumeRequest() error {
 }
 
 func (t *DockerTail) consumeLine(line string) {
-	rfc3339Nano, content, err := splitLogLine(line)
+	rfc3339Nano, content, err := splitLogLine(trimDockerLt(line))
 	if err != nil {
 		t.Print(fmt.Sprintf("[%v] %s", err, line))
 		return
@@ -195,4 +195,13 @@ func (t *DockerTail) printStopping() {
 			fmt.Fprintf(t.errOut, "%s %s › %s\n", r("-"), p(t.ComposeProject), c(t.ContainerName))
 		}
 	}
+}
+
+func trimDockerLt(line string) string {
+	idx := strings.IndexRune(line, '<')
+
+	if idx == -1 {
+		return line
+	}
+	return line[idx+1:]
 }
