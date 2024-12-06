@@ -436,6 +436,9 @@ func (o *options) generateTemplate() (*template.Template, error) {
 		"toRFC3339Nano": func(ts any) string {
 			return toTime(ts).Format(time.RFC3339Nano)
 		},
+		"msToRFC3339Nano": func(ts any) string {
+			return toTimeMilli(ts).Format(time.RFC3339Nano)
+		},
 		"toUTC": func(ts any) time.Time {
 			return toTime(ts).UTC()
 		},

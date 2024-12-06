@@ -14,12 +14,38 @@ package tailfincmd
 
 import (
 	"encoding/json"
+	"errors"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/spf13/cast"
 )
+
+func toTimeMilli(a any) time.Time {
+	t, _ := toTimeMilliE(a)
+	return t
+}
+
+func toTimeMilliE(a any) (time.Time, error) {
+	switch v := a.(type) {
+	case string:
+		ms, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return time.Time{}, err
+		}
+		return time.UnixMilli(ms), nil
+	case json.Number:
+		i, err := v.Int64()
+		if err != nil {
+			return time.Time{}, err
+		}
+		return time.UnixMilli(i), nil
+	case float64:
+		return time.UnixMilli(int64(v)), nil
+	}
+	return time.Time{}, errors.New("Unsupported type")
+}
 
 func toTime(a any) time.Time {
 	t, _ := toTimeE(a)
