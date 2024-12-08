@@ -20,7 +20,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 		}
 		// Start watching for container events
 		args := filters.NewArgs()
-		args.Add("event", string(events.ActionStop))
+		args.Add("event", string(events.ActionDie))
 		args.Add("event", string(events.ActionStart))
 		ctx, cancel := context.WithCancel(ctx)
 		opts := types.EventsOptions{Filters: args}
@@ -47,7 +47,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 						continue
 					}
 					filter.visit(container, visitor)
-				case events.ActionStop:
+				case events.ActionDie:
 					filter.forget(e.ID)
 				}
 			case <-ctx.Done():

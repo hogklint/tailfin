@@ -23,13 +23,15 @@ type dockerTargetFilterConfig struct {
 }
 
 type dockerTargetFilter struct {
-	config dockerTargetFilterConfig
-	mu     sync.RWMutex
+	config           dockerTargetFilterConfig
+	activeContainers map[string]bool
+	mu               sync.RWMutex
 }
 
 func newDockerTargetFilter(filterConfig dockerTargetFilterConfig) *dockerTargetFilter {
 	return &dockerTargetFilter{
-		config: filterConfig,
+		config:           filterConfig,
+		activeContainers: make(map[string]bool),
 	}
 }
 
@@ -60,17 +62,38 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		StartedAt:      container.State.StartedAt,
 		FinishedAt:     container.State.FinishedAt,
 	}
-	visitor(target)
+
+	if f.shouldAdd(target) {
+		visitor(target)
+	}
 }
 
-func (f *dockerTargetFilter) forget(podUID string) {
+func (f *dockerTargetFilter) shouldAdd(t *DockerTarget) bool {
+	f.mu.Lock()
+	_, alreadyActive := f.activeContainers[t.Id]
+	f.activeContainers[t.Id] = true
+	f.mu.Unlock()
+
+	if alreadyActive {
+		klog.V(7).InfoS("Container ID existed before observation",
+			"id", t.Id, "name", t.Name)
+		return false
+	}
+
+	return true
+}
+
+func (f *dockerTargetFilter) forget(containerId string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	//for targetID, state := range f.targetStates {
-	//	if state.podUID == podUID {
-	//		klog.V(7).InfoS("Forget targetState", "target", targetID)
-	//		delete(f.targetStates, targetID)
-	//	}
-	//}
+	klog.V(7).InfoS("Forget container", "target", containerId)
+	delete(f.activeContainers, containerId)
+}
+
+func (f *dockerTargetFilter) isActive(t *DockerTarget) bool {
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+	_, ok := f.activeContainers[t.Id]
+	return ok
 }
