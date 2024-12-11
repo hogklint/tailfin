@@ -126,7 +126,7 @@ func (t *DockerTail) consumeRequest() error {
 }
 
 func (t *DockerTail) consumeLine(line string) {
-	rfc3339Nano, content, err := splitLogLine(trimDockerLt(line))
+	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(line))
 	if err != nil {
 		t.Print(fmt.Sprintf("[%v] %s", err, line))
 		return
@@ -197,11 +197,7 @@ func (t *DockerTail) printStopping() {
 	}
 }
 
-func trimDockerLt(line string) string {
-	idx := strings.IndexRune(line, '<')
-
-	if idx == -1 {
-		return line
-	}
-	return line[idx+1:]
+func trimLeadingChars(line string) string {
+	// Can't find any info why lines are prefixed with what seems to be mostly UTF-8 control chars.
+	return line[8:]
 }
