@@ -109,6 +109,7 @@ func (t *DockerTail) consumeRequest() error {
 	if err != nil {
 		return err
 	}
+	defer logs.Close()
 
 	r := bufio.NewReader(logs)
 	for {
