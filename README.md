@@ -1,124 +1,76 @@
-[![Build](https://github.com/stern/stern/workflows/CI/badge.svg)](https://github.com/stern/stern/actions?query=workflow%3ACI+branch%3Amaster)
-# stern
+[![Build](https://github.com/hogklint/tailfin/workflows/CI/badge.svg)](https://github.com/hogklint/tailfin/actions?query=workflow%3ACI+branch%3Amaster)
+# tailfin
 
-*Fork of discontinued [wercker/stern](https://github.com/wercker/stern)*
+*Under development*
 
-Stern allows you to `tail` multiple pods on Kubernetes and multiple containers
-within the pod. Each result is color coded for quicker debugging.
+tailfin allows you to `tail` multiple Docker containers. Each result is color coded for quicker debugging.
 
-The query is a regular expression or a Kubernetes resource in the form
- `<resource>/<name>` so the pod name can easily be filtered and
-you don't need to specify the exact id (for instance omitting the deployment
-id). If a pod is deleted it gets removed from tail and if a new pod is added it
-automatically gets tailed.
+The query is a regular expression of container names for easy filtering. If a container terminates or is deleted it gets
+removed from tail and if a new container starts or is added it automatically gets tailed.
 
-When a pod contains multiple containers Stern can tail all of them too without
-having to do this manually for each one. Simply specify the `container` flag to
-limit what containers to show. By default all containers are listened to.
+*TODO* Containers can also be filtered on the image name which is handy when they are assigned random names.
+
+Built on the excellent work of [stern](https://github.com/stern/stern).
 
 ## Installation
 
 ### Download binary
 
-Download a [binary release](https://github.com/stern/stern/releases)
+Download a [binary release](https://github.com/hogklint/tailfin/releases)
 
 ### Build from source
 
 ```
-go install github.com/stern/stern@latest
-```
-
-### asdf (Linux/macOS)
-
-If you use [asdf](https://asdf-vm.com/), you can install like this:
-```
-asdf plugin-add stern
-asdf install stern latest
-```
-
-### Homebrew (Linux/macOS)
-
-If you use [Homebrew](https://brew.sh), you can install like this:
-```
-brew install stern
-```
-
-### Krew (Linux/macOS/Windows)
-
-If you use [Krew](https://krew.sigs.k8s.io/) which is the package manager for kubectl plugins, you can install like this:
-```
-kubectl krew install stern
+go install github.com/hogklint/tailfin@latest
 ```
 
 ## Usage
 
 ```
-stern pod-query [flags]
+tailfin [flags] [container query]
 ```
 
-The `pod-query` is a regular expression or a Kubernetes resource in the form `<resource>/<name>`.
+The `container query` is a regular expression of the container name, so you could provide `"web-\w"` to tail
+`web-backend` and `web-frontend` pods but not `web-123`.
 
-The query is a regular expression when it is not a Kubernetes resource,
-so you could provide `"web-\w"` to tail `web-backend` and `web-frontend` pods but not `web-123`.
-
-When the query is in the form `<resource>/<name>` (exact match), you can select all pods belonging
-to the specified Kubernetes resource, such as `deployment/nginx`.
-Supported Kubernetes resources are `pod`, `replicationcontroller`, `service`, `daemonset`, `deployment`,
-`replicaset`, `statefulset` and `job`.
-
-### cli flags
+### CLI Flags
 
 <!-- auto generated cli flags begin --->
- flag                        | default                       | purpose
------------------------------|-------------------------------|---------
- `--all-namespaces`, `-A`    | `false`                       | If present, tail across all namespaces. A specific namespace is ignored even if specified with --namespace.
- `--color`                   | `auto`                        | Force set color output. 'auto':  colorize if tty attached, 'always': always colorize, 'never': never colorize.
- `--completion`              |                               | Output stern command-line completion code for the specified shell. Can be 'bash', 'zsh' or 'fish'.
- `--config`                  | `~/.config/stern/config.yaml` | Path to the stern config file
- `--container`, `-c`         | `.*`                          | Container name when multiple containers in pod. (regular expression)
- `--container-colors`        |                               | Specifies the colors used to highlight container names. Use the same format as --pod-colors. Defaults to the values of --pod-colors if omitted, and must match its length.
- `--container-state`         | `all`                         | Tail containers with state in running, waiting, terminated, or all. 'all' matches all container states. To specify multiple states, repeat this or set comma-separated value.
- `--context`                 |                               | The name of the kubeconfig context to use
- `--diff-container`, `-d`    | `false`                       | Display different colors for different containers.
- `--ephemeral-containers`    | `true`                        | Include or exclude ephemeral containers.
- `--exclude`, `-e`           | `[]`                          | Log lines to exclude. (regular expression)
- `--exclude-container`, `-E` | `[]`                          | Container name to exclude when multiple containers in pod. (regular expression)
- `--exclude-pod`             | `[]`                          | Pod name to exclude. (regular expression)
- `--field-selector`          |                               | Selector (field query) to filter on. If present, default to ".*" for the pod-query.
- `--highlight`, `-H`         | `[]`                          | Log lines to highlight. (regular expression)
- `--include`, `-i`           | `[]`                          | Log lines to include. (regular expression)
- `--init-containers`         | `true`                        | Include or exclude init containers.
- `--kubeconfig`              |                               | Path to the kubeconfig file to use for CLI requests.
- `--max-log-requests`        | `-1`                          | Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow
- `--namespace`, `-n`         |                               | Kubernetes namespace to use. Default to namespace configured in kubernetes context. To specify multiple namespaces, repeat this or set comma-separated value.
- `--no-follow`               | `false`                       | Exit when all logs have been shown.
- `--node`                    |                               | Node name to filter on.
- `--only-log-lines`          | `false`                       | Print only log lines
- `--output`, `-o`            | `default`                     | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
- `--pod-colors`              |                               | Specifies the colors used to highlight pod names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., "91,92,93,94,95,96".
- `--prompt`, `-p`            | `false`                       | Toggle interactive prompt for selecting 'app.kubernetes.io/instance' label values.
- `--selector`, `-l`          |                               | Selector (label query) to filter on. If present, default to ".*" for the pod-query.
- `--show-hidden-options`     | `false`                       | Print a list of hidden options.
- `--since`, `-s`             | `48h0m0s`                     | Return logs newer than a relative duration like 5s, 2m, or 3h.
- `--stdin`                   | `false`                       | Parse logs from stdin. All Kubernetes related flags are ignored when it is set.
- `--tail`                    | `-1`                          | The number of lines from the end of the logs to show. Defaults to -1, showing all logs.
- `--template`                |                               | Template to use for log lines, leave empty to use --output flag.
- `--template-file`, `-T`     |                               | Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.
- `--timestamps`, `-t`        |                               | Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.
- `--timezone`                | `Local`                       | Set timestamps to specific timezone.
- `--verbosity`               | `0`                           | Number of the log level verbosity
- `--version`, `-v`           | `false`                       | Print the version and exit.
+ flag                        | default                         | purpose
+-----------------------------|---------------------------------|---------
+ `--color`                   | `auto`                          | Force set color output. 'auto':  colorize if tty attached, 'always': always colorize, 'never': never colorize.
+ `--completion`              |                                 | Output stern command-line completion code for the specified shell. Can be 'bash', 'zsh' or 'fish'.
+ `--compose-colors`          |                                 | Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., "91,92,93,94,95,96".
+ `--config`                  | `~/.config/tailfin/config.yaml` | Path to the tailfin config file
+ `--container-colors`        |                                 | Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.
+ `--exclude`, `-e`           | `[]`                            | Log lines to exclude. (regular expression)
+ `--exclude-container`, `-E` | `[]`                            | Container name to exclude. (regular expression)
+ `--highlight`, `-H`         | `[]`                            | Log lines to highlight. (regular expression)
+ `--include`, `-i`           | `[]`                            | Log lines to include. (regular expression)
+ `--max-log-requests`        | `-1`                            | Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow
+ `--no-follow`               | `false`                         | Exit when all logs have been shown.
+ `--only-log-lines`          | `false`                         | Print only log lines
+ `--output`, `-o`            | `default`                       | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
+ `--since`, `-s`             | `48h0m0s`                       | Return logs newer than a relative duration like 5s, 2m, or 3h.
+ `--stdin`                   | `false`                         | Parse logs from stdin. All Kubernetes related flags are ignored when it is set.
+ `--tail`                    | `-1`                            | The number of lines from the end of the logs to show. Defaults to -1, showing all logs.
+ `--template`                |                                 | Template to use for log lines, leave empty to use --output flag.
+ `--template-file`, `-T`     |                                 | Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.
+ `--timestamps`, `-t`        |                                 | Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.
+ `--timezone`                | `Local`                         | Set timestamps to specific timezone.
+ `--verbosity`               | `0`                             | Number of the log level verbosity
+ `--version`, `-v`           | `false`                         | Print the version and exit.
 <!-- auto generated cli flags end --->
 
-See `stern --help` for details
+See `tailfin --help` for details
 
-Stern will use the `$KUBECONFIG` environment variable if set. If both the
-environment variable and `--kubeconfig` flag are passed the cli flag will be
-used.
+Tailfin will use the [Docker environment variables](https://docs.docker.com/reference/cli/docker/#environment-variables)
+if set. *TODO* If both the environment variable and `--context` flag are passed the CLI flag will be used.
 
 ### config file
-
-You can use the config file to change the default values of stern options. The default config file path is `~/.config/stern/config.yaml`. 
+*TODO: test this*
+You can use the config file to change the default values of tailfin options. The default config file path is
+`~/.config/tailfin/config.yaml`.
 
 ```yaml
 # <flag name>: <value>
@@ -127,16 +79,16 @@ max-log-requests: 999
 timestamps: short
 ```
 
-You can change the config file path with `--config` flag or `STERNCONFIG` environment variable.
+You can change the config file path with `--config` flag or `TAILFINCONFIG` environment variable.
 
 ### templates
 
-stern supports outputting custom log messages.  There are a few predefined
-templates which you can use by specifying the `--output` flag:
+Tailfin supports outputting custom log messages.  There are a few predefined templates which you can use by specifying
+the `--output` flag:
 
 | output    | description                                                                                           |
 |-----------|-------------------------------------------------------------------------------------------------------|
-| `default` | Displays the namespace, pod and container, and decorates it with color depending on --color           |
+| `default` | Displays the compose project and container, and decorates it with color depending on --color          |
 | `raw`     | Only outputs the log message itself, useful when your logs are json and you want to pipe them to `jq` |
 | `json`    | Marshals the log struct to json. Useful for programmatic purposes                                     |
 
@@ -144,13 +96,11 @@ It accepts a custom template through the `--template` flag, which will be
 compiled to a Go template and then used for every log message. This Go template
 will receive the following struct:
 
-| property        | type   | description                                 |
-|-----------------|--------|---------------------------------------------|
-| `Message`       | string | The log message itself                      |
-| `NodeName`      | string | The node name where the pod is scheduled on |
-| `Namespace`     | string | The namespace of the pod                    |
-| `PodName`       | string | The name of the pod                         |
-| `ContainerName` | string | The name of the container                   |
+| property        | type   | description                                    |
+|-----------------|--------|------------------------------------------------|
+| `Message`       | string | The log message itself                         |
+| `ComposeProject`| string | The name of the docker compose project, if any |
+| `ContainerName` | string | The name of the container                      |
 
 The following functions are available within the template (besides the [builtin
 functions](https://golang.org/pkg/text/template/#hdr-Functions)):
@@ -158,37 +108,30 @@ functions](https://golang.org/pkg/text/template/#hdr-Functions)):
 | func            | arguments             | description                                                                       |
 |-----------------|-----------------------|-----------------------------------------------------------------------------------|
 | `json`          | `object`              | Marshal the object and output it as a json text                                   |
-| `color`         | `color.Color, string` | Wrap the text in color (.ContainerColor and .PodColor provided)                   |
+| `color`         | `color.Color, string` | Wrap the text in color (.ContainerColor and .ComposeColor provided)               |
 | `parseJSON`     | `string`              | Parse string as JSON                                                              |
-| `tryParseJSON`  | `string`              | Attempt to parse string as JSON, return nil on failure                             |
+| `tryParseJSON`  | `string`              | Attempt to parse string as JSON, return nil on failure                            |
 | `extractJSONParts`    | `string, ...string` | Parse string as JSON and concatenate the given keys.                          |
 | `tryExtractJSONParts` | `string, ...string` | Attempt to parse string as JSON and concatenate the given keys. , return text on failure |
-| `extjson`       | `string`              | Parse the object as json and output colorized json                                |
-| `ppextjson`     | `string`              | Parse the object as json and output pretty-print colorized json                   |
-| `toRFC3339Nano` | `object`              | Parse timestamp (string, int, json.Number) and output it using RFC3339Nano format |
-| `msToRFC3339Nano` | `object`              | Parse milliseconds timestamp (string, int) and output it using RFC3339Nano format |
-| `toTimestamp`   | `object, string [, string]` | Parse timestamp (string, int, json.Number) and output it using the given layout in the timezone that is optionally given (defaults to UTC). |
-| `levelColor`    | `string`              | Print log level using appropriate color                                           |
-| `colorBlack`    | `string`              | Print text using black color                                                      |
-| `colorRed`      | `string`              | Print text using red color                                                        |
-| `colorGreen`    | `string`              | Print text using green color                                                      |
-| `colorYellow`   | `string`              | Print text using yellow color                                                     |
-| `colorBlue`     | `string`              | Print text using blue color                                                       |
-| `colorMagenta`  | `string`              | Print text using magenta color                                                    |
-| `colorCyan`     | `string`              | Print text using cyan color                                                       |
-| `colorWhite`    | `string`              | Print text using white color                                                      |
-
-
-### Log level verbosity
-
-You can configure the log level verbosity by the `--verbosity` flag.
-It is useful when you want to know how stern interacts with a Kubernetes API server in troubleshooting.
-
-Increasing the verbosity increases the number of logs. `--verbosity 6` would be a good starting point.
+| `extjson`         | `string`              | Parse the object as json and output colorized json                                |
+| `ppextjson`       | `string`              | Parse the object as json and output pretty-print colorized json                   |
+| `toRFC3339Nano`   | `object`              | Parse timestamp (string, int, json.Number) and output it using RFC3339Nano format |
+| `msToRFC3339Nano` | `object`            | Parse milliseconds timestamp (string, int) and output it using RFC3339Nano format   |
+| `toTimestamp`     | `object, string [, string]` | Parse timestamp (string, int, json.Number) and output it using the given layout in the timezone that is optionally given (defaults to UTC). |
+| `levelColor`      | `string`              | Print log level using appropriate color                                           |
+| `bunyanLevelColor` | `string`             | Print [bunyan](https://github.com/trentm/node-bunyan) numeric log level using appropriate color |
+| `colorBlack`      | `string`              | Print text using black color                                                      |
+| `colorRed`        | `string`              | Print text using red color                                                        |
+| `colorGreen`      | `string`              | Print text using green color                                                      |
+| `colorYellow`     | `string`              | Print text using yellow color                                                     |
+| `colorBlue`       | `string`              | Print text using blue color                                                       |
+| `colorMagenta`    | `string`              | Print text using magenta color                                                    |
+| `colorCyan`       | `string`              | Print text using cyan color                                                       |
+| `colorWhite`      | `string`              | Print text using white color                                                      |
 
 ### Max log requests
 
-Stern has the maximum number of concurrent logs to request to prevent unintentional load to a cluster.
+Tailfin has the maximum number of concurrent logs to request to prevent unintentional load to a docker daemon.
 The number can be configured by the `--max-log-requests` flag.
 
 The behavior and the default are different depending on the presence of the `--no-follow` flag.
@@ -198,238 +141,153 @@ The behavior and the default are different depending on the presence of the `--n
 | specified     | 5       | limits the number of concurrent logs to request |
 | not specified | 50      | exits with an error when if it reaches the concurrent limit |
 
-The combination of `--max-log-requests 1` and `--no-follow` will be helpful if you want to show logs in order.
-
 ### Customize highlight colors
-You can configure highlight colors for pods and containers in [the config file](#config-file) using a comma-separated list of [SGR (Select Graphic Rendition) sequences](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters), as shown below. If you omit `container-colors`, the pod colors will be used as container colors as well.
+You can configure highlight colors for compose projects and containers in [the config file](#config-file) using a comma-separated list of [SGR (Select Graphic Rendition) sequences](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters), as shown below. If you omit `container-colors`, the compose project colors will be used as container colors as well.
 
 ```yaml
 # Green, Yellow, Blue, Magenta, Cyan, White
-pod-colors: "32,33,34,35,36,37"
+compose-colors: "32,33,34,35,36,37"
 
 # Colors with underline (4)
-# If empty, the pod colors will be used as container colors
+# If empty, the compose colors will be used as container colors
 container-colors: "32;4,33;4,34;4,35;4,36;4,37;4"
 ```
 
 This format enables the use of various attributes, such as underline, background colors, 8-bit colors, and 24-bit colors, if your terminal supports them.
 
-The equivalent flags `--pod-colors` and `--container-colors` are also available. The following command applies [24-bit colors](https://en.wikipedia.org/wiki/ANSI_escape_code#24-bit) using the `--pod-colors` flag.
+The equivalent flags `--compose-colors` and `--container-colors` are also available. The following command applies [24-bit colors](https://en.wikipedia.org/wiki/ANSI_escape_code#24-bit) using the `--compose-colors` flag.
 
 ```bash
 # Monokai theme
-podColors="38;2;255;97;136,38;2;169;220;118,38;2;255;216;102,38;2;120;220;232,38;2;171;157;242"
-stern --pod-colors "$podColors" deploy/app
+composeColors="38;2;255;97;136,38;2;169;220;118,38;2;255;216;102,38;2;120;220;232,38;2;171;157;242"
+tailfin --compose-colors "$composeColors" app
 ```
 
 ## Examples:
-Tail all logs from all namespaces
+Tail all logs
 ```
-stern . --all-namespaces
-```
-
-Tail the `kube-system` namespace without printing any prior logs
-```
-stern . -n kube-system --tail 0
+tailfin .
 ```
 
-Tail the `gateway` container running inside of the `envvars` pod on staging
+*TODO* Tail the `test` compose project without printing any prior logs
 ```
-stern envvars --context staging --container gateway
-```
-
-Tail the `staging` namespace excluding logs from `istio-proxy` container
-```
-stern -n staging --exclude-container istio-proxy .
+tailfin . -c test --tail 0
 ```
 
-Tail the `kube-system` namespace excluding logs from `kube-apiserver` pod
+Tail everything excluding logs from `backend` container
 ```
-stern -n kube-system --exclude-pod kube-apiserver .
-```
-
-Show auth activity from 15min ago with timestamps
-```
-stern auth -t --since 15m
+tailfin --exclude-container backend .
 ```
 
-Show all logs of the last 5min by time, sorted by time
+*TODO* Show auth activity from 15min ago with timestamps
 ```
-stern --since=5m --no-follow --only-log-lines -A -t . | sort -k4
-```
-
-Show auth activity with timestamps in specific timezone (default is your local timezone)
-```
-stern auth -t --timezone Asia/Tokyo
+tailfin auth -t --since 15m
 ```
 
-Follow the development of `some-new-feature` in minikube
+*TODO* Show all logs of the last 5min by time, sorted by time
 ```
-stern some-new-feature --context minikube
-```
-
-View pods from another namespace
-```
-stern kubernetes-dashboard --namespace kube-system
+tailfin --since=5m --no-follow --only-log-lines -t . | sort -k4
 ```
 
-Tail the pods filtered by `run=nginx` label selector across all namespaces
+Show `backend` container with timestamps in specific timezone (default is your local timezone)
 ```
-stern --all-namespaces -l run=nginx
-```
-
-Follow the `frontend` pods in canary release
-```
-stern frontend --selector release=canary
+tailfin backend -t --timezone Asia/Tokyo
 ```
 
-Tail the pods on `kind-control-plane` node across all namespaces
+*TODO* Follow the development of `some-new-feature` in esc
 ```
-stern --all-namespaces --field-selector spec.nodeName=kind-control-plane
+tailfin some-new-feature --context esc
 ```
 
-Tail the pods created by `deployment/nginx`
+*TODO* Tail the pods filtered by `run=nginx` label selector
 ```
-stern deployment/nginx
+tailfin -l run=nginx
 ```
 
 Pipe the log message to jq:
 ```
-stern backend -o json | jq .
+tailfin backend -o json | jq .
 ```
 
 Only output the log message itself:
 ```
-stern backend -o raw
+tailfin backend -o raw
 ```
 
 Output using a custom template:
 
 ```
-stern --template '{{printf "%s (%s/%s/%s/%s)\n" .Message .NodeName .Namespace .PodName .ContainerName}}' backend
+tailfin --template '{{printf "%s (%s/%s)\n" .Message .ComposeProject .ContainerName}}' backend
 ```
 
-Output using a custom template with stern-provided colors:
+Output using a custom template with tailfin-provided colors:
 
 ```
-stern --template '{{.Message}} ({{.Namespace}}/{{color .PodColor .PodName}}/{{color .ContainerColor .ContainerName}}){{"\n"}}' backend
+tailfin --template '{{.Message}} ({{color .ComposeColor .ComposeProject}}/{{color .ContainerColor .ContainerName}}){{"\n"}}' backend
 ```
 
 Output using a custom template with `parseJSON`:
 
 ```
-stern --template='{{.PodName}}/{{.ContainerName}} {{with $d := .Message | parseJSON}}[{{$d.level}}] {{$d.message}}{{end}}{{"\n"}}' backend
+tailfin --template='{{.ComposeProject}}/{{.ContainerName}} {{with $d := .Message | parseJSON}}[{{$d.level}}] {{$d.message}}{{end}}{{"\n"}}' backend
 ```
 
 Output using a custom template that tries to parse JSON or fallbacks to raw format:
 
 ```
-stern --template='{{.PodName}}/{{.ContainerName}} {{ with $msg := .Message | tryParseJSON }}[{{ colorGreen (toRFC3339Nano $msg.ts) }}] {{ levelColor $msg.level }} ({{ colorCyan $msg.caller }}) {{ $msg.msg }}{{ else }} {{ .Message }} {{ end }}{{"\n"}}' backend
+tailfin --template='{{.ComposeProject}}/{{.ContainerName}} {{ with $msg := .Message | tryParseJSON }}[{{ colorGreen (toRFC3339Nano $msg.ts) }}] {{ levelColor $msg.level }} ({{ colorCyan $msg.caller }}) {{ $msg.msg }}{{ else }} {{ .Message }} {{ end }}{{"\n"}}' backend
 ```
 
 Load custom template from file:
 
 ```
-stern --template-file=~/.stern.tpl backend
-```
-
-Trigger the interactive prompt to select an 'app.kubernetes.io/instance' label value:
-
-```
-stern -p
+tailfin --template-file=~/.tailfin.tpl backend
 ```
 
 Output log lines only:
 
 ```
-stern . --only-log-lines
+tailfin . --only-log-lines
 ```
 
 Read from stdin:
 
 ```
-stern --stdin < service.log
+tailfin --stdin < service.log
 ```
 
 ## Completion
 
-Stern supports command-line auto completion for bash, zsh or fish. `stern
+Tailfin supports command-line auto completion for bash, zsh or fish. `tailfin
 --completion=(bash|zsh|fish)` outputs the shell completion code which work by being
-evaluated in `.bashrc`, etc for the specified shell. In addition, Stern
-supports dynamic completion for `--namespace`, `--context`, `--node`, a resource query
-in the form `<resource>/<name>`, and flags with pre-defined choices.
+evaluated in `.bashrc`, etc for the specified shell. *TODO* In addition, Tailfin
+supports dynamic completion for `--context`and flags with pre-defined choices.
 
-If you use bash, stern bash completion code depends on the
-[bash-completion](https://github.com/scop/bash-completion). On the macOS, you
-can install it with homebrew as follows:
+If you use bash, tailfin bash completion code depends on the
+[bash-completion](https://github.com/scop/bash-completion).
 
-```
-# If running Bash 3.2
-brew install bash-completion
-
-# or, if running Bash 4.1+
-brew install bash-completion@2
-```
-
-Note that bash-completion must be sourced before sourcing the stern bash
+Note that bash-completion must be sourced before sourcing the tailfin bash
 completion code in `.bashrc`.
 
+*TODO test this*
 ```sh
-source "$(brew --prefix)/etc/profile.d/bash_completion.sh"
-source <(stern --completion=bash)
+source /path/to/bash_completion.sh"
+source <(tailfin --completion=bash)
 ```
 
-If installed via Krew, use:
-
-```bash
-source <(kubectl stern --completion bash)
-complete -o default -F __start_stern kubectl stern
-```
-
-If you use zsh, just source the stern zsh completion code in `.zshrc`.
+If you use zsh, just source the tailfin zsh completion code in `.zshrc`.
 
 ```sh
-source <(stern --completion=zsh)
+source <(tailfin --completion=zsh)
 ```
 
-if you use fish shell, just source the stern fish completion code.
+if you use fish shell, just source the tailfin fish completion code.
 
 ```sh
-stern --completion=fish | source
+tailfin --completion=fish | source
 
 # To load completions for each session, execute once:
-stern --completion=fish >~/.config/fish/completions/stern.fish
-```
-
-## Running with container
-
-You can also use stern using a container:
-
-```
-docker run ghcr.io/stern/stern --version
-```
-
-If you are using a minikube cluster, you need to run a container as follows:
-
-```
-docker run --rm -v "$HOME/.minikube:$HOME/.minikube" -v "$HOME/.kube:/$HOME/.kube" -e KUBECONFIG="$HOME/.kube/config" ghcr.io/stern/stern .
-```
-
-You can find image tags in https://github.com/orgs/stern/packages/container/package/stern.
-
-## Running in Kubernetes Pods
-
-If you want to use stern in Kubernetes Pods, you need to create the following ClusterRole and bind it to ServiceAccount.
-
-```yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: stern
-rules:
-- apiGroups: [""]
-  resources: ["pods", "pods/log"]
-  verbs: ["get", "watch", "list"]
+tailfin --completion=fish >~/.config/fish/completions/tailfin.fish
 ```
 
 ## Contributing to this repository

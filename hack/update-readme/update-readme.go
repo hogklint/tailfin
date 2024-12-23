@@ -7,9 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/hogklint/tailfin/cmd"
+	"github.com/hogklint/tailfin/cmd/tailfincmd"
 	"github.com/spf13/pflag"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
 )
 
 const (
@@ -48,7 +47,7 @@ func main() {
 //	 `--flag2`       | `flag2-default` | This is flag2.
 func GenerateFlagsMarkdownTable() string {
 	fs := pflag.NewFlagSet("", pflag.ExitOnError)
-	o := cmd.NewOptions(genericclioptions.NewTestIOStreamsDiscard())
+	o := tailfincmd.NewOptions(tailfincmd.IOStreams{Out: io.Discard, ErrOut: io.Discard})
 	o.AddFlags(fs)
 
 	flagMaxlen, defaultMaxlen := len(" flag "), len(" default ")
