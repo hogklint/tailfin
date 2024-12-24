@@ -18,7 +18,7 @@ jobs:
       with:
         go-version-file: go.mod
     - name: Ensure go.mod is already tidied
-      run: go mod tidy && git diff -s --exit-code go.sum
+      run: go mod tidy -diff
     - name: Run verify-readme
       run: make verify-readme
     - name: Run tests
