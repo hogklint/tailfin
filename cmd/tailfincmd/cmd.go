@@ -340,8 +340,8 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&o.highlight, "highlight", "H", o.highlight, "Log lines to highlight. (regular expression)")
 	fs.IntVar(&o.maxLogRequests, "max-log-requests", o.maxLogRequests, "Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow")
 	fs.StringVarP(&o.output, "output", "o", o.output, "Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]")
-	fs.DurationVarP(&o.since, "since", "s", o.since, "Return logs newer than a relative duration like 5s, 2m, or 3h.")
-	fs.Int64Var(&o.tail, "tail", o.tail, "The number of lines from the end of the logs to show. Defaults to -1, showing all logs.")
+	//TODO fs.DurationVarP(&o.since, "since", "s", o.since, "Return logs newer than a relative duration like 5s, 2m, or 3h.")
+	//TODO fs.Int64Var(&o.tail, "tail", o.tail, "The number of lines from the end of the logs to show. Defaults to -1, showing all logs.")
 	fs.StringVar(&o.template, "template", o.template, "Template to use for log lines, leave empty to use --output flag.")
 	fs.StringVarP(&o.templateFile, "template-file", "T", o.templateFile, "Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.")
 	fs.StringVarP(&o.timestamps, "timestamps", "t", o.timestamps, "Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.")
@@ -353,6 +353,10 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.stdin, "stdin", o.stdin, "Parse logs from stdin. All Kubernetes related flags are ignored when it is set.")
 	fs.StringSliceVar(&o.containerColors, "compose-colors", o.containerColors, "Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., \"91,92,93,94,95,96\".")
 	fs.StringSliceVar(&o.composeColors, "container-colors", o.composeColors, "Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.")
+	// TODO: --context for docker context? Seems to be a `docker` thing, not a dockerd thing.
+	// TODO: --compose/-c to limit to a compose project
+	// TODO: --ignore-compose to make it unaware of compose (e.g. use full container name)
+	// TODO: --label/-l
 
 	fs.Lookup("timestamps").NoOptDefVal = "default"
 }

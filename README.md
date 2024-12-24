@@ -52,9 +52,7 @@ The `container query` is a regular expression of the container name; you could p
  `--no-follow`               | `false`                         | Exit when all logs have been shown.
  `--only-log-lines`          | `false`                         | Print only log lines
  `--output`, `-o`            | `default`                       | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
- `--since`, `-s`             | `48h0m0s`                       | Return logs newer than a relative duration like 5s, 2m, or 3h.
  `--stdin`                   | `false`                         | Parse logs from stdin. All Kubernetes related flags are ignored when it is set.
- `--tail`                    | `-1`                            | The number of lines from the end of the logs to show. Defaults to -1, showing all logs.
  `--template`                |                                 | Template to use for log lines, leave empty to use --output flag.
  `--template-file`, `-T`     |                                 | Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.
  `--timestamps`, `-t`        |                                 | Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.
@@ -66,8 +64,9 @@ The `container query` is a regular expression of the container name; you could p
 See `tailfin --help` for details
 
 Tailfin will use the [Docker environment variables](https://docs.docker.com/reference/cli/docker/#environment-variables)
-if set. *TODO* If both the environment variable and `--context` flag are passed the CLI flag will be used.
+if set. <!--*TODO* If both the environment variable and `--context` flag are passed the CLI flag will be used.-->
 
+<!--
 ### config file
 *TODO: test this*
 You can use the config file to change the default values of tailfin options. The default config file path is
@@ -81,7 +80,7 @@ timestamps: short
 ```
 
 You can change the config file path with `--config` flag or `TAILFINCONFIG` environment variable.
-
+-->
 ### templates
 
 Tailfin supports outputting custom log messages.  There are a few predefined templates which you can use by specifying
@@ -169,42 +168,44 @@ Tail all logs
 ```
 tailfin .
 ```
-
+<!--
 *TODO* Tail the `test` compose project without printing any prior logs
 ```
 tailfin . -c test --tail 0
 ```
-
+-->
 Tail everything excluding logs from `backend` container
 ```
 tailfin --exclude-container backend .
 ```
-
+<!--
 *TODO* Show auth activity from 15min ago with timestamps
 ```
 tailfin auth -t --since 15m
 ```
-
+-->
+<!--
 *TODO* Show all logs of the last 5min by time, sorted by time
 ```
 tailfin --since=5m --no-follow --only-log-lines -t . | sort -k4
 ```
-
+-->
 Show `backend` container with timestamps in specific timezone (default is your local timezone)
 ```
 tailfin backend -t --timezone Asia/Tokyo
 ```
-
+<!--
 *TODO* Follow the development of `some-new-feature` in esc
 ```
 tailfin some-new-feature --context esc
 ```
-
+-->
+<!--
 *TODO* Tail the pods filtered by `run=nginx` label selector
 ```
 tailfin -l run=nginx
 ```
-
+-->
 Pipe the log message to jq:
 ```
 tailfin backend -o json | jq .
@@ -261,8 +262,8 @@ tailfin --stdin < service.log
 
 Tailfin supports command-line auto completion for bash, zsh or fish. `tailfin
 --completion=(bash|zsh|fish)` outputs the shell completion code which work by being
-evaluated in `.bashrc`, etc for the specified shell. *TODO* In addition, Tailfin
-supports dynamic completion for `--context`and flags with pre-defined choices.
+evaluated in `.bashrc`, etc for the specified shell. <!--*TODO* In addition, Tailfin
+supports dynamic completion for `--context`and flags with pre-defined choices.-->
 
 If you use bash, tailfin bash completion code depends on the
 [bash-completion](https://github.com/scop/bash-completion).
@@ -270,7 +271,6 @@ If you use bash, tailfin bash completion code depends on the
 Note that bash-completion must be sourced before sourcing the tailfin bash
 completion code in `.bashrc`.
 
-*TODO test this*
 ```sh
 source /path/to/bash_completion.sh"
 source <(tailfin --completion=bash)
