@@ -1,6 +1,6 @@
 ---
 name: Bug Report
-about: Report a bug encountered while using stern
+about: Report a bug encountered while using tailfin
 labels: kind/bug
 
 ---
@@ -14,7 +14,6 @@ labels: kind/bug
 **Anything else we need to know?**:
 
 **Environment**:
-- stern version (use `stern --version`):
+- tailfin version (use `tailfin --version`):
 - OS (e.g: `cat /etc/os-release`):
-- Install tools (e.g: Homebrew)
 - Others:
