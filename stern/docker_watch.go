@@ -18,14 +18,15 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 			klog.V(7).InfoS("New container", "id", t.Id, "name", t.Name)
 			added <- t
 		}
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
+
 		// Start watching for container events
 		args := filters.NewArgs()
 		args.Add("event", string(events.ActionDie))
 		args.Add("event", string(events.ActionStart))
-		ctx, cancel := context.WithCancel(ctx)
 		opts := types.EventsOptions{Filters: args}
 		watcher, errc := client.Events(ctx, opts)
-		defer cancel()
 
 		// Then list all current containers
 		containers, err := ListDockers(ctx, config, client, filter, visitor)

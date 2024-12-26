@@ -28,6 +28,7 @@ type DockerTail struct {
 	containerColor *color.Color
 	Options        *TailOptions
 	tmpl           *template.Template
+	closed         chan struct{}
 	out            io.Writer
 	errOut         io.Writer
 }
@@ -56,6 +57,7 @@ func NewDockerTail(
 		composeColor:   composeColor,
 		containerColor: containerColor,
 		tmpl:           tmpl,
+		closed:         make(chan struct{}),
 		out:            out,
 		errOut:         errOut,
 	}
@@ -69,11 +71,16 @@ func determineDockerColor(containerName, composeProject string) (*color.Color, *
 	return colorList[colorIndex(composeProject)][0], containerColor
 }
 
-func (t *DockerTail) Start( /*ctx?*/ ) error {
-	t.printStarting()
-	defer t.printStopping()
+func (t *DockerTail) Start(ctx context.Context) error {
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		<-t.closed
+		cancel()
+	}()
 
-	err := t.consumeRequest()
+	t.printStarting()
+
+	err := t.consumeRequest(ctx)
 	if err != nil {
 		klog.V(7).ErrorS(err, "Error fetching logs for container", "name", t.ContainerName, "id", t.ContainerId)
 		if errors.Is(err, context.Canceled) {
@@ -82,6 +89,11 @@ func (t *DockerTail) Start( /*ctx?*/ ) error {
 	}
 
 	return err
+}
+
+func (t *DockerTail) Close() {
+	t.printStopping()
+	close(t.closed)
 }
 
 func (t *DockerTail) getSinceTime() string {
@@ -97,10 +109,9 @@ func (t *DockerTail) getSinceTime() string {
 	return t.StartedAt
 }
 
-func (t *DockerTail) consumeRequest() error {
+func (t *DockerTail) consumeRequest(ctx context.Context) error {
 	logs, err := t.client.ContainerLogs(
-		// TODO: Fix context
-		context.Background(),
+		ctx,
 		t.ContainerId,
 		container.LogsOptions{
 			ShowStdout: true,

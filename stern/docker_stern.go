@@ -58,8 +58,8 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 
 	tailTarget := func(target *DockerTarget) {
 		tail := newTail(target)
-		var err error
-		err = tail.Start()
+		defer tail.Close()
+		err := tail.Start(ctx)
 		if err != nil && filter.isActive(target) {
 			fmt.Fprintf(config.ErrOut, "failed to tail %s: %v\n", target.Name, err)
 		}
