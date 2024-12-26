@@ -47,6 +47,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 						klog.V(7).ErrorS(err, "failed to inspect container", "id", e.ID)
 						continue
 					}
+					klog.V(8).InfoS("Container inspect", "id", e.ID, "container JSON", container)
 					filter.visit(container, visitor)
 				case events.ActionDie:
 					filter.forget(e.ID)

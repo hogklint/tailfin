@@ -36,16 +36,6 @@ func newDockerTargetFilter(filterConfig dockerTargetFilterConfig) *dockerTargetF
 }
 
 func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t *DockerTarget)) {
-	if !f.config.containerFilter.MatchString(container.Name) {
-		return
-	}
-	for _, re := range f.config.containerExcludeFilter {
-		if re.MatchString(container.Name) {
-			klog.V(7).InfoS("Container matches exclude filter", "id", container.ID, "names", container.Name, "excludeFilter", re)
-			return
-		}
-	}
-
 	composeProject := ""
 	containerName := strings.TrimPrefix(container.Name, "/")
 	if p, ok := container.Config.Labels["com.docker.compose.project"]; ok {
@@ -53,6 +43,16 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 	}
 	if s, ok := container.Config.Labels["com.docker.compose.service"]; ok {
 		containerName = s
+	}
+
+	if !f.config.containerFilter.MatchString(containerName) {
+		return
+	}
+	for _, re := range f.config.containerExcludeFilter {
+		if re.MatchString(containerName) {
+			klog.V(7).InfoS("Container matches exclude filter", "id", container.ID, "names", containerName, "excludeFilter", re)
+			return
+		}
 	}
 
 	target := &DockerTarget{
