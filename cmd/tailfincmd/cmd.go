@@ -611,25 +611,6 @@ func NewTailfinCmd(streams IOStreams) (*cobra.Command, error) {
 	return cmd, nil
 }
 
-// makeUnique makes items in string slice unique
-func makeUnique(items []string) []string {
-	result := []string{}
-	m := make(map[string]struct{})
-
-	for _, item := range items {
-		if item == "" {
-			continue
-		}
-
-		if _, ok := m[item]; !ok {
-			m[item] = struct{}{}
-			result = append(result, item)
-		}
-	}
-
-	return result
-}
-
 func compileREs(exprs []string) ([]*regexp.Regexp, error) {
 	var regexps []*regexp.Regexp
 	for _, s := range exprs {
