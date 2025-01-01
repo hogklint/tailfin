@@ -29,7 +29,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 		watcher, errc := client.Events(ctx, opts)
 
 		// Then list all current containers
-		containers, err := ListDockers(ctx, config, client, filter, visitor)
+		containers, err := ListDockers(ctx, config, client)
 		if err != nil {
 			return
 		}
