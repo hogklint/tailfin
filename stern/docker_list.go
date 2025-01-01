@@ -27,3 +27,19 @@ func ContainerGenerator(ctx context.Context, config *DockerConfig, client *docke
 		}
 	}, nil
 }
+
+func FilteredContainerGenerator(ctx context.Context, config *DockerConfig, client *dockerclient.Client, filter *dockerTargetFilter) (iter.Seq[*DockerTarget], error) {
+	containers, err := ContainerGenerator(ctx, config, client)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(yield func(*DockerTarget) bool) {
+		visitor := func(t *DockerTarget) {
+			yield(t)
+		}
+		for target := range containers {
+			filter.visit(target, visitor)
+		}
+	}, nil
+}

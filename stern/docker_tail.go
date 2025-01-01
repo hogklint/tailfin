@@ -116,7 +116,7 @@ func (t *DockerTail) consumeRequest(ctx context.Context) error {
 		container.LogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
-			Follow:     true,
+			Follow:     t.Options.Follow,
 			Timestamps: true,
 			Since:      t.getSinceTime(),
 		},

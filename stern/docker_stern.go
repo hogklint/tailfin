@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	dockerclient "github.com/docker/docker/client"
+	"golang.org/x/sync/errgroup"
 )
 
 func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerConfig) error {
@@ -49,6 +50,25 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		containerFilter:        config.ContainerQuery,
 		containerExcludeFilter: config.ExcludeContainerQuery,
 	})
+
+	if !config.Follow {
+		containers, err := FilteredContainerGenerator(ctx, config, client, filter)
+		if err != nil {
+			return err
+		}
+
+		var eg errgroup.Group
+		eg.SetLimit(config.MaxLogRequests)
+		for target := range containers {
+			target := target
+			eg.Go(func() error {
+				tail := newTail(target)
+				defer tail.Close()
+				return tail.Start(ctx)
+			})
+		}
+		return eg.Wait()
+	}
 
 	added, err := WatchDockers(ctx, config, filter, client)
 	if err != nil {
