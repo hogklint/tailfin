@@ -237,7 +237,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			"json message",
-			`{"message":"json message","nodeName":"node1","namespace":"ns1","podName":"pod1","containerName":"container1"}
+			`{"message":"json message","nodeName":"node1","namespace":"ns1","podName":"pod1","containerName":"container1","composeProject":""}
 `,
 			false,
 		},
