@@ -51,6 +51,17 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		containerExcludeFilter: config.ExcludeContainerQuery,
 	})
 
+	tailTarget := func(target *DockerTarget) error {
+		tail := newTail(target)
+		defer tail.Close()
+		err := tail.Start(ctx)
+		if err != nil && filter.isActive(target) {
+			fmt.Fprintf(config.ErrOut, "failed to tail %s: %v\n", target.Name, err)
+			return err
+		}
+		return nil
+	}
+
 	if !config.Follow {
 		containers, err := FilteredContainerGenerator(ctx, config, client, filter)
 		if err != nil {
@@ -62,9 +73,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		for target := range containers {
 			target := target
 			eg.Go(func() error {
-				tail := newTail(target)
-				defer tail.Close()
-				return tail.Start(ctx)
+				return tailTarget(target)
 			})
 		}
 		return eg.Wait()
@@ -74,15 +83,6 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 	if err != nil {
 		fmt.Fprintf(config.ErrOut, "failed to list containers: %v\n", err)
 		return err
-	}
-
-	tailTarget := func(target *DockerTarget) {
-		tail := newTail(target)
-		defer tail.Close()
-		err := tail.Start(ctx)
-		if err != nil && filter.isActive(target) {
-			fmt.Fprintf(config.ErrOut, "failed to tail %s: %v\n", target.Name, err)
-		}
 	}
 
 	var numRequests atomic.Int64
