@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sync"
+	"sync/atomic"
 
 	dockerclient "github.com/docker/docker/client"
 	"golang.org/x/sync/errgroup"
@@ -85,17 +85,18 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		}
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for {
-			target := <-added
-			go func() {
-				tailTarget(target)
-			}()
+	var numRequests atomic.Int64
+	for {
+		target := <-added
+		numRequests.Add(1)
+		if numRequests.Load() > int64(config.MaxLogRequests) {
+			return fmt.Errorf("tailfin reached the maximum number of log requests (%d),"+
+				" use --max-log-requests to increase the limit\n",
+				config.MaxLogRequests)
 		}
-	}()
-	wg.Wait()
-	return nil
+		go func() {
+			tailTarget(target)
+			numRequests.Add(-1)
+		}()
+	}
 }
