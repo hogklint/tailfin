@@ -25,14 +25,14 @@ type dockerTargetFilterConfig struct {
 
 type dockerTargetFilter struct {
 	config           dockerTargetFilterConfig
-	activeContainers map[string]bool
+	activeContainers map[string]time.Time
 	mu               sync.RWMutex
 }
 
 func newDockerTargetFilter(filterConfig dockerTargetFilterConfig) *dockerTargetFilter {
 	return &dockerTargetFilter{
 		config:           filterConfig,
-		activeContainers: make(map[string]bool),
+		activeContainers: make(map[string]time.Time),
 	}
 }
 
@@ -81,11 +81,14 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 
 func (f *dockerTargetFilter) shouldAdd(t *DockerTarget) bool {
 	f.mu.Lock()
-	_, alreadyActive := f.activeContainers[t.Id]
-	f.activeContainers[t.Id] = true
+	startedAt, found := f.activeContainers[t.Id]
+	f.activeContainers[t.Id] = t.StartedAt
 	f.mu.Unlock()
 
-	if alreadyActive {
+	// Listed already terminated containers will not emit a Die event so they will stay in the activeContainers map. When
+	// restarted it should still be added if the start time is different. If the start time is the same it means the
+	// container was listed as well as received in a start event i.e. should not be added twice.
+	if found && startedAt == t.StartedAt {
 		klog.V(7).InfoS("Container ID existed before observation",
 			"id", t.Id, "name", t.Name)
 		return false
