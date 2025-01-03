@@ -8,6 +8,7 @@ import (
 
 	dockerclient "github.com/docker/docker/client"
 	"golang.org/x/sync/errgroup"
+	"k8s.io/klog/v2"
 )
 
 func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerConfig) error {
@@ -95,7 +96,10 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 				config.MaxLogRequests)
 		}
 		go func() {
-			tailTarget(target)
+			err := tailTarget(target)
+			if err != nil {
+				klog.V(7).ErrorS(err, "Error tailing container", "id", target.Id, "name", target.Name)
+			}
 			numRequests.Add(-1)
 		}()
 	}
