@@ -22,7 +22,7 @@ type DockerTail struct {
 	ContainerId    string
 	ContainerName  string
 	ComposeProject string
-	StartedAt      string
+	StartedAt      time.Time
 	FinishedAt     string
 	composeColor   *color.Color
 	containerColor *color.Color
@@ -38,7 +38,7 @@ func NewDockerTail(
 	containerId string,
 	containerName string,
 	composeProject string,
-	startedAt string,
+	startedAt time.Time,
 	finishedAt string,
 	tmpl *template.Template,
 	out, errOut io.Writer,
@@ -96,15 +96,15 @@ func (t *DockerTail) Close() {
 	close(t.closed)
 }
 
-func (t *DockerTail) getSinceTime() string {
-	started, err1 := time.Parse(time.RFC3339, t.StartedAt)
-	finished, err2 := time.Parse(time.RFC3339, t.FinishedAt)
-	if err1 != nil || err2 != nil {
+func (t *DockerTail) getSinceTime() time.Time {
+	finished, err := time.Parse(time.RFC3339, t.FinishedAt)
+	if err != nil {
 		return t.StartedAt
 	}
 
-	if finished.Before(started) {
-		return t.FinishedAt
+	// Sometimes early logs are missing if StartedAt is used
+	if finished.Before(t.StartedAt) {
+		return finished
 	}
 	return t.StartedAt
 }
@@ -118,7 +118,7 @@ func (t *DockerTail) consumeRequest(ctx context.Context) error {
 			ShowStderr: true,
 			Follow:     t.Options.Follow,
 			Timestamps: true,
-			Since:      t.getSinceTime(),
+			Since:      t.getSinceTime().Format(time.RFC3339),
 		},
 	)
 	if err != nil {

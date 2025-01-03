@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"k8s.io/klog/v2"
@@ -12,7 +13,7 @@ import (
 type DockerTarget struct {
 	Id             string
 	Name           string
-	StartedAt      string
+	StartedAt      time.Time
 	FinishedAt     string
 	ComposeProject string
 }
@@ -55,11 +56,21 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		}
 	}
 
+	// Not yet started containers have no logs
+	if container.State.Status == "created" {
+		return
+	}
+
+	startedAt, err := time.Parse(time.RFC3339, container.State.StartedAt)
+	if err != nil {
+		return
+	}
+
 	target := &DockerTarget{
 		Id:             container.ID,
 		Name:           containerName,
 		ComposeProject: composeProject,
-		StartedAt:      container.State.StartedAt,
+		StartedAt:      startedAt,
 		FinishedAt:     container.State.FinishedAt,
 	}
 
