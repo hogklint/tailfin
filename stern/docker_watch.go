@@ -2,7 +2,6 @@ package stern
 
 import (
 	"context"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -58,7 +57,6 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 				close(added)
 				return
 			}
-			time.Sleep(1 * time.Second)
 		}
 	}()
 	return added, nil
