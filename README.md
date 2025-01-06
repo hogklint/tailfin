@@ -31,7 +31,7 @@ tailfin [flags] [container query]...
 ```
 
 The `container query` is a regular expression of the container name; you could provide `"web-\w"` to tail
-`web-backend` and `web-frontend` pods but not `web-123`.
+`web-backend` and `web-frontend` containers but not `web-123`.
 
 ### CLI Flags
 
@@ -204,7 +204,7 @@ tailfin some-new-feature --context esc
 ```
 -->
 <!--
-*TODO* Tail the pods filtered by `run=nginx` label selector
+*TODO* Tail the containers filtered by `run=nginx` label selector
 ```
 tailfin -l run=nginx
 ```
