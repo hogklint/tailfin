@@ -20,7 +20,7 @@ func ContainerGenerator(ctx context.Context, config *DockerConfig, client *docke
 		for _, c := range containers {
 			container, err := client.ContainerInspect(ctx, c.ID)
 			if err != nil {
-				fmt.Fprintf(config.ErrOut, "failed to inspect container id=%s: %v\n", container.ID, err)
+				fmt.Fprintf(config.ErrOut, "failed to inspect container id=%s: %v\n", c.ID, err)
 				continue
 			}
 			yield(container)
