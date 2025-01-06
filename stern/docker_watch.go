@@ -53,6 +53,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 				}
 			case <-ctx.Done():
 				close(added)
+				return
 			case <-errc:
 				close(added)
 				return
