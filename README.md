@@ -5,8 +5,8 @@
 
 tailfin allows you to `tail` multiple Docker containers. Each result is color coded for quicker debugging.
 
-The query is a regular expression of container names for easy filtering. If a container terminates or is deleted it gets
-removed from tail and if a new container starts or is added it automatically gets tailed.
+The query is a regular expression of container names for easy filtering. If a container terminates it gets removed from
+tail and if a new container starts it automatically gets tailed.
 
 Containers can also be filtered on the image name which is handy when they are assigned random names.
 
