@@ -66,21 +66,24 @@ See `tailfin --help` for details
 Tailfin will use the [Docker environment variables](https://docs.docker.com/reference/cli/docker/#environment-variables)
 if set. <!--*TODO* If both the environment variable and `--context` flag are passed the CLI flag will be used.-->
 
-<!--
 ### config file
-*TODO: test this*
 You can use the config file to change the default values of tailfin options. The default config file path is
 `~/.config/tailfin/config.yaml`.
 
+```yaml
+# <flag name>: <value>
+max-log-requests: 999
+timestamps: short
+```
+<!-- TODO (tail)
 ```yaml
 # <flag name>: <value>
 tail: 10
 max-log-requests: 999
 timestamps: short
 ```
-
-You can change the config file path with `--config` flag or `TAILFINCONFIG` environment variable.
 -->
+You can change the config file path with `--config` flag or `TAILFINCONFIG` environment variable.
 ### templates
 
 Tailfin supports outputting custom log messages.  There are a few predefined templates which you can use by specifying
