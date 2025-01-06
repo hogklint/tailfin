@@ -65,7 +65,7 @@ type options struct {
 	template         string
 	templateFile     string
 	output           string
-	containerQuery   string
+	containerQuery   []string
 	noFollow         bool
 	verbosity        int
 	onlyLogLines     bool
@@ -102,7 +102,7 @@ func NewOptions(streams IOStreams) *options {
 
 func (o *options) Complete(args []string) error {
 	if len(args) > 0 {
-		o.containerQuery = args[0]
+		o.containerQuery = args
 	}
 
 	envVar, ok := os.LookupEnv("TAILFINCONFIG")
@@ -120,7 +120,7 @@ func (o *options) Complete(args []string) error {
 }
 
 func (o *options) Validate() error {
-	if o.containerQuery == "" && !o.stdin && len(o.image) == 0 {
+	if len(o.containerQuery) == 0 && len(o.image) == 0 && !o.stdin {
 		return errors.New("One of container-query, --image, or --stdin is required")
 	}
 
@@ -147,7 +147,7 @@ func (o *options) Run(cmd *cobra.Command) error {
 }
 
 func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
-	container, err := regexp.Compile(o.containerQuery)
+	container, err := compileREs(o.containerQuery)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to compile regular expression from query")
 	}

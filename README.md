@@ -27,10 +27,10 @@ go install github.com/hogklint/tailfin@latest
 ## Usage
 
 ```
-tailfin [flags] [container query]
+tailfin [flags] [container query]...
 ```
 
-The `container query` is a regular expression of the container name, so you could provide `"web-\w"` to tail
+The `container query` is a regular expression of the container name; you could provide `"web-\w"` to tail
 `web-backend` and `web-frontend` pods but not `web-123`.
 
 ### CLI Flags

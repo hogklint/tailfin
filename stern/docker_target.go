@@ -19,7 +19,7 @@ type DockerTarget struct {
 }
 
 type dockerTargetFilterConfig struct {
-	containerFilter        *regexp.Regexp
+	containerFilter        []*regexp.Regexp
 	containerExcludeFilter []*regexp.Regexp
 	imageFilter            []*regexp.Regexp
 }
@@ -47,15 +47,9 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		containerName = s
 	}
 
-	if !f.config.containerFilter.MatchString(containerName) {
-		return
-	}
-
-	if f.matchingNameExcludeFilter(containerName) {
-		return
-	}
-
-	if !f.matchingImageFilter(container.Config.Image) {
+	if !f.matchingNameFilter(containerName) ||
+		!f.matchingImageFilter(container.Config.Image) ||
+		f.matchingNameExcludeFilter(containerName) {
 		return
 	}
 
@@ -98,6 +92,20 @@ func (f *dockerTargetFilter) shouldAdd(t *DockerTarget) bool {
 	}
 
 	return true
+}
+
+func (f *dockerTargetFilter) matchingNameFilter(containerName string) bool {
+	if len(f.config.containerFilter) == 0 {
+		return true
+	}
+
+	for _, re := range f.config.containerFilter {
+		if re.MatchString(containerName) {
+			return true
+		}
+	}
+	klog.V(7).InfoS("Container name does not match filters", "image", containerName)
+	return false
 }
 
 func (f *dockerTargetFilter) matchingNameExcludeFilter(containerName string) bool {
