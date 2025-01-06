@@ -13,9 +13,10 @@ import (
 type DockerTarget struct {
 	Id             string
 	Name           string
+	ComposeProject string
+	Tty            bool
 	StartedAt      time.Time
 	FinishedAt     string
-	ComposeProject string
 }
 
 type dockerTargetFilterConfig struct {
@@ -67,6 +68,7 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		Id:             container.ID,
 		Name:           containerName,
 		ComposeProject: composeProject,
+		Tty:            container.Config.Tty,
 		StartedAt:      startedAt,
 		FinishedAt:     container.State.FinishedAt,
 	}

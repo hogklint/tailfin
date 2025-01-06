@@ -22,6 +22,7 @@ type DockerTail struct {
 	ContainerId    string
 	ContainerName  string
 	ComposeProject string
+	Tty            bool
 	StartedAt      time.Time
 	FinishedAt     string
 	composeColor   *color.Color
@@ -38,6 +39,7 @@ func NewDockerTail(
 	containerId string,
 	containerName string,
 	composeProject string,
+	tty bool,
 	startedAt time.Time,
 	finishedAt string,
 	tmpl *template.Template,
@@ -51,6 +53,7 @@ func NewDockerTail(
 		ContainerId:    containerId,
 		ContainerName:  containerName,
 		ComposeProject: composeProject,
+		Tty:            tty,
 		StartedAt:      startedAt,
 		FinishedAt:     finishedAt,
 		Options:        options,
@@ -142,7 +145,7 @@ func (t *DockerTail) consumeRequest(ctx context.Context) error {
 }
 
 func (t *DockerTail) consumeLine(line string) {
-	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(line))
+	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(line, t.Tty))
 	if err != nil {
 		t.Print(fmt.Sprintf("[%v] %s", err, line))
 		return
@@ -213,7 +216,12 @@ func (t *DockerTail) printStopping() {
 	}
 }
 
-func trimLeadingChars(line string) string {
-	// Can't find any info why lines are prefixed with what seems to be mostly UTF-8 control chars.
+// Container stream format: https://docs.docker.com/reference/api/engine/version/v1.47/#tag/Container/operation/ContainerAttach
+// When TTY is not enabled the lines are prefixed with stream type (stdin/stdout/stderr). We don't need it, so it's just
+// stripped away.
+func trimLeadingChars(line string, tty bool) string {
+	if tty {
+		return line
+	}
 	return line[8:]
 }

@@ -33,6 +33,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			target.Id,
 			target.Name,
 			target.ComposeProject,
+			target.Tty,
 			target.StartedAt,
 			target.FinishedAt,
 			config.Template,
