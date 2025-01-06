@@ -54,6 +54,7 @@ type options struct {
 	timestamps       string
 	timezone         string
 	since            time.Duration
+	image            []string
 	exclude          []string
 	include          []string
 	highlight        []string
@@ -119,9 +120,8 @@ func (o *options) Complete(args []string) error {
 }
 
 func (o *options) Validate() error {
-	if o.containerQuery == "" && !o.stdin {
-		// TODO: Add image matching
-		return errors.New("One of container-query or --stdin is required")
+	if o.containerQuery == "" && !o.stdin && len(o.image) == 0 {
+		return errors.New("One of container-query, --image, or --stdin is required")
 	}
 
 	return nil
@@ -160,6 +160,11 @@ func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
 	exclude, err := compileREs(o.exclude)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to compile regular expression for exclusion filter")
+	}
+
+	image, err := compileREs(o.image)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to compile regular expression for image filter")
 	}
 
 	include, err := compileREs(o.include)
@@ -225,6 +230,7 @@ func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
 		Location:              location,
 		ExcludeContainerQuery: excludeContainer,
 		Exclude:               exclude,
+		ImageQuery:            image,
 		Include:               include,
 		Highlight:             highlight,
 		Since:                 o.since,
@@ -329,6 +335,7 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&o.exclude, "exclude", "e", o.exclude, "Log lines to exclude. (regular expression)")
 	fs.StringArrayVarP(&o.excludeContainer, "exclude-container", "E", o.excludeContainer, "Container name to exclude. (regular expression)")
 	fs.BoolVar(&o.noFollow, "no-follow", o.noFollow, "Exit when all logs have been shown.")
+	fs.StringArrayVarP(&o.image, "image", "m", o.image, "Images to match (regular expression)")
 	fs.StringArrayVarP(&o.include, "include", "i", o.include, "Log lines to include. (regular expression)")
 	fs.StringArrayVarP(&o.highlight, "highlight", "H", o.highlight, "Log lines to highlight. (regular expression)")
 	fs.IntVar(&o.maxLogRequests, "max-log-requests", o.maxLogRequests, "Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow")

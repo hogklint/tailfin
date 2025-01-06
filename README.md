@@ -8,7 +8,7 @@ tailfin allows you to `tail` multiple Docker containers. Each result is color co
 The query is a regular expression of container names for easy filtering. If a container terminates or is deleted it gets
 removed from tail and if a new container starts or is added it automatically gets tailed.
 
-*TODO* Containers can also be filtered on the image name which is handy when they are assigned random names.
+Containers can also be filtered on the image name which is handy when they are assigned random names.
 
 Built on the excellent work of [stern](https://github.com/stern/stern).
 
@@ -46,6 +46,7 @@ The `container query` is a regular expression of the container name, so you coul
  `--exclude`, `-e`           | `[]`                            | Log lines to exclude. (regular expression)
  `--exclude-container`, `-E` | `[]`                            | Container name to exclude. (regular expression)
  `--highlight`, `-H`         | `[]`                            | Log lines to highlight. (regular expression)
+ `--image`, `-m`             | `[]`                            | Images to match (regular expression)
  `--include`, `-i`           | `[]`                            | Log lines to include. (regular expression)
  `--max-log-requests`        | `-1`                            | Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow
  `--no-follow`               | `false`                         | Exit when all logs have been shown.

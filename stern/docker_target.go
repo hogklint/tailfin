@@ -21,6 +21,7 @@ type DockerTarget struct {
 type dockerTargetFilterConfig struct {
 	containerFilter        *regexp.Regexp
 	containerExcludeFilter []*regexp.Regexp
+	imageFilter            []*regexp.Regexp
 }
 
 type dockerTargetFilter struct {
@@ -49,11 +50,13 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 	if !f.config.containerFilter.MatchString(containerName) {
 		return
 	}
-	for _, re := range f.config.containerExcludeFilter {
-		if re.MatchString(containerName) {
-			klog.V(7).InfoS("Container matches exclude filter", "id", container.ID, "names", containerName, "excludeFilter", re)
-			return
-		}
+
+	if f.matchingNameExcludeFilter(containerName) {
+		return
+	}
+
+	if !f.matchingImageFilter(container.Config.Image) {
+		return
 	}
 
 	// Not yet started containers have no logs
@@ -95,6 +98,31 @@ func (f *dockerTargetFilter) shouldAdd(t *DockerTarget) bool {
 	}
 
 	return true
+}
+
+func (f *dockerTargetFilter) matchingNameExcludeFilter(containerName string) bool {
+	for _, re := range f.config.containerExcludeFilter {
+		if re.MatchString(containerName) {
+			klog.V(7).InfoS("Container name matches exclude filter",
+				"name", containerName, "excludeFilter", re)
+			return true
+		}
+	}
+	return false
+}
+
+func (f *dockerTargetFilter) matchingImageFilter(containerImage string) bool {
+	if len(f.config.imageFilter) == 0 {
+		return true
+	}
+
+	for _, re := range f.config.imageFilter {
+		if re.MatchString(containerImage) {
+			return true
+		}
+	}
+	klog.V(7).InfoS("Image does not match image filters", "image", containerImage)
+	return false
 }
 
 func (f *dockerTargetFilter) forget(containerId string) {

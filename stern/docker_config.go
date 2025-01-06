@@ -15,6 +15,7 @@ type DockerConfig struct {
 	ContainerQuery        *regexp.Regexp
 	ExcludeContainerQuery []*regexp.Regexp
 	Exclude               []*regexp.Regexp
+	ImageQuery            []*regexp.Regexp
 	Include               []*regexp.Regexp
 	Highlight             []*regexp.Regexp
 	Since                 time.Duration
