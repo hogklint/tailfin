@@ -52,7 +52,7 @@ The `container query` is a regular expression of the container name; you could p
  `--no-follow`               | `false`                         | Exit when all logs have been shown.
  `--only-log-lines`          | `false`                         | Print only log lines
  `--output`, `-o`            | `default`                       | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
- `--stdin`                   | `false`                         | Parse logs from stdin. All Kubernetes related flags are ignored when it is set.
+ `--stdin`                   | `false`                         | Parse logs from stdin. All Docker related flags are ignored when it is set.
  `--template`                |                                 | Template to use for log lines, leave empty to use --output flag.
  `--template-file`, `-T`     |                                 | Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.
  `--timestamps`, `-t`        |                                 | Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.

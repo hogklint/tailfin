@@ -350,7 +350,7 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.configFilePath, "config", o.configFilePath, "Path to the tailfin config file")
 	fs.IntVar(&o.verbosity, "verbosity", o.verbosity, "Number of the log level verbosity")
 	fs.BoolVarP(&o.version, "version", "v", o.version, "Print the version and exit.")
-	fs.BoolVar(&o.stdin, "stdin", o.stdin, "Parse logs from stdin. All Kubernetes related flags are ignored when it is set.")
+	fs.BoolVar(&o.stdin, "stdin", o.stdin, "Parse logs from stdin. All Docker related flags are ignored when it is set.")
 	fs.StringSliceVar(&o.containerColors, "compose-colors", o.containerColors, "Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., \"91,92,93,94,95,96\".")
 	fs.StringSliceVar(&o.composeColors, "container-colors", o.composeColors, "Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.")
 	// TODO: --context for docker context? Seems to be a `docker` thing, not a dockerd thing.
