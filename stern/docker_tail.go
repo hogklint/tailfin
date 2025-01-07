@@ -130,6 +130,7 @@ func (t *DockerTail) consumeRequest(ctx context.Context) error {
 			Follow:     t.Options.Follow,
 			Timestamps: true,
 			Since:      t.getSinceTime().Format(time.RFC3339),
+			Tail:       t.Options.DockerTailLines,
 		},
 	)
 	if err != nil {

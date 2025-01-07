@@ -54,6 +54,7 @@ The `container query` is a regular expression of the container name; you could p
  `--output`, `-o`            | `default`                       | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
  `--since`, `-s`             | `48h0m0s`                       | Return logs newer than a relative duration like 5s, 2m, or 3h. The duration is truncated at container start time.
  `--stdin`                   | `false`                         | Parse logs from stdin. All Docker related flags are ignored when it is set.
+ `--tail`                    | `-1`                            | The number of lines from the end of the logs to show. Defaults to -1, showing all logs.
  `--template`                |                                 | Template to use for log lines, leave empty to use --output flag.
  `--template-file`, `-T`     |                                 | Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.
  `--timestamps`, `-t`        |                                 | Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.

@@ -50,6 +50,7 @@ type TailOptions struct {
 	Highlight       []*regexp.Regexp
 	Namespace       bool
 	TailLines       *int64
+	DockerTailLines string
 	Follow          bool
 	OnlyLogLines    bool
 

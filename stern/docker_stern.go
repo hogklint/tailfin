@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -23,7 +24,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			Include:         config.Include,
 			Highlight:       config.Highlight,
 			Namespace:       false,
-			TailLines:       config.TailLines,
+			DockerTailLines: strconv.FormatInt(config.TailLines, 10),
 			Follow:          config.Follow,
 			OnlyLogLines:    config.OnlyLogLines,
 		}

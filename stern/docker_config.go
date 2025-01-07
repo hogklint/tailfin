@@ -19,7 +19,7 @@ type DockerConfig struct {
 	Include               []*regexp.Regexp
 	Highlight             []*regexp.Regexp
 	Since                 time.Duration
-	TailLines             *int64
+	TailLines             int64
 	Template              *template.Template
 	Follow                bool
 	OnlyLogLines          bool
