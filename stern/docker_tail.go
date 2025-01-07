@@ -99,10 +99,18 @@ func (t *DockerTail) Close() {
 	close(t.closed)
 }
 
+// The maximum "since time" is the time the container was last started. Because logs are sometimes missing when using
+// the start time, the finished time is used instead (because there are no logs between the finish and start time). If
+// the Options.SinceTime is after the finished time it'll be used with the same reasoning in addition to it might be
+// after the start time, which in that case is the desired "since time".
 func (t *DockerTail) getSinceTime() time.Time {
 	finished, err := time.Parse(time.RFC3339, t.FinishedAt)
-	if err != nil {
-		return t.StartedAt
+	// If there's no finish time it should mean the container only started once so it's safe to use the options time. The
+	// same applies if the finish time is earlier than the option time.
+	if err != nil ||
+		finished.Before(t.Options.DockerSinceTime) ||
+		t.StartedAt.Before(t.Options.DockerSinceTime) {
+		return t.Options.DockerSinceTime
 	}
 
 	// Sometimes early logs are missing if StartedAt is used

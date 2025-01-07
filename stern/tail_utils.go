@@ -42,15 +42,16 @@ type TailOptions struct {
 	TimestampFormat string
 	Location        *time.Location
 
-	SinceSeconds *int64
-	SinceTime    *metav1.Time
-	Exclude      []*regexp.Regexp
-	Include      []*regexp.Regexp
-	Highlight    []*regexp.Regexp
-	Namespace    bool
-	TailLines    *int64
-	Follow       bool
-	OnlyLogLines bool
+	SinceSeconds    *int64
+	DockerSinceTime time.Time
+	SinceTime       *metav1.Time
+	Exclude         []*regexp.Regexp
+	Include         []*regexp.Regexp
+	Highlight       []*regexp.Regexp
+	Namespace       bool
+	TailLines       *int64
+	Follow          bool
+	OnlyLogLines    bool
 
 	// regexp for highlighting the matched string
 	reHightlight *regexp.Regexp

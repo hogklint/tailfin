@@ -52,6 +52,7 @@ The `container query` is a regular expression of the container name; you could p
  `--no-follow`               | `false`                         | Exit when all logs have been shown.
  `--only-log-lines`          | `false`                         | Print only log lines
  `--output`, `-o`            | `default`                       | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
+ `--since`, `-s`             | `48h0m0s`                       | Return logs newer than a relative duration like 5s, 2m, or 3h. The duration is truncated at container start time.
  `--stdin`                   | `false`                         | Parse logs from stdin. All Docker related flags are ignored when it is set.
  `--template`                |                                 | Template to use for log lines, leave empty to use --output flag.
  `--template-file`, `-T`     |                                 | Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.
@@ -181,18 +182,17 @@ Tail everything excluding logs from `backend` container
 ```
 tailfin --exclude-container backend .
 ```
-<!--
-*TODO* Show auth activity from 15min ago with timestamps
+
+Show auth activity from 15min ago with timestamps
 ```
 tailfin auth -t --since 15m
 ```
--->
-<!--
-*TODO* Show all logs of the last 5min by time, sorted by time
+
+Show all logs of the last 5min by time, sorted by time (`sort -k3` when using docker compose)
 ```
-tailfin --since=5m --no-follow --only-log-lines -t . | sort -k4
+tailfin --since=5m --no-follow --only-log-lines -t . | sort -k2
 ```
--->
+
 Show `backend` container with timestamps in specific timezone (default is your local timezone)
 ```
 tailfin backend -t --timezone Asia/Tokyo

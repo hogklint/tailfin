@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sync/atomic"
+	"time"
 
 	dockerclient "github.com/docker/docker/client"
 	"golang.org/x/sync/errgroup"
@@ -17,7 +18,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			Timestamps:      config.Timestamps,
 			TimestampFormat: config.TimestampFormat,
 			Location:        config.Location,
-			SinceSeconds:    nil,
+			DockerSinceTime: time.Now().Add(-config.Since),
 			Exclude:         config.Exclude,
 			Include:         config.Include,
 			Highlight:       config.Highlight,
