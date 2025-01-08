@@ -111,6 +111,7 @@ func (o *options) Complete(args []string) error {
 	}
 
 	var err error
+	// TODO More error handling here. err == nil even if no daemon is found
 	o.dockerClient, err = dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
