@@ -37,7 +37,7 @@ The `container query` is a regular expression of the container name; you could p
  flag                        | default                         | purpose
 -----------------------------|---------------------------------|---------
  `--color`                   | `auto`                          | Force set color output. 'auto':  colorize if tty attached, 'always': always colorize, 'never': never colorize.
- `--completion`              |                                 | Output tailfin command-line completion code for the specified shell. Can be 'bash', 'zsh' or 'fish'.
+ `--completion`              |                                 | Output stern command-line completion code for the specified shell. Can be 'bash', 'zsh' or 'fish'.
  `--compose-colors`          |                                 | Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., "91,92,93,94,95,96".
  `--config`                  | `~/.config/tailfin/config.yaml` | Path to the tailfin config file
  `--container-colors`        |                                 | Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.
