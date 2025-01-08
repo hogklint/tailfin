@@ -4,6 +4,10 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  # Allow creating GitHub releases
+  contents: write
+
 jobs:
   run:
     runs-on: ubuntu-latest
