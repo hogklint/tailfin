@@ -4,9 +4,9 @@ builds:
   ldflags:
   - -s
   - -w
-  - -X github.com/stern/stern/cmd.version={{.Version}}
-  - -X github.com/stern/stern/cmd.commit={{.Commit}}
-  - -X github.com/stern/stern/cmd.date={{.Date}}
+  - -X github.com/hogklint/tailfin/cmd/tailfincmd.version={{.Version}}
+  - -X github.com/hogklint/tailfin/cmd/tailfincmd.commit={{.Commit}}
+  - -X github.com/hogklint/tailfin/cmd/tailfincmd.date={{.Date}}
   goos:
   - linux
   - windows
@@ -15,9 +15,10 @@ builds:
   - amd64
   - arm
   - arm64
+  main: ./cmd/tailfin
 archives:
 - builds:
-  - stern
+  - tailfin
   name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
   format: tar.gz
   files:
