@@ -232,5 +232,11 @@ func trimLeadingChars(line string, tty bool) string {
 	if tty {
 		return line
 	}
+	if len(line) < 8 {
+		// And sometimes the line is something else...?
+		klog.V(7).InfoS("Invalid log line format received", "line", line)
+		return ""
+	}
+
 	return line[8:]
 }
