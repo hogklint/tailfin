@@ -19,7 +19,7 @@ Download a [binary release](https://github.com/hogklint/tailfin/releases)
 ### Build from source
 
 ```
-go install github.com/hogklint/tailfin@latest
+go install github.com/hogklint/tailfin/cmd/tailfin@latest
 ```
 
 ## Usage
