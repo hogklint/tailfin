@@ -22,6 +22,7 @@ type DockerTarget struct {
 type dockerTargetFilterConfig struct {
 	containerFilter        []*regexp.Regexp
 	containerExcludeFilter []*regexp.Regexp
+	composeProjectFilter   []*regexp.Regexp
 	imageFilter            []*regexp.Regexp
 }
 
@@ -49,6 +50,7 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 	}
 
 	if !f.matchingNameFilter(containerName) ||
+		!f.matchingComposeFilter(composeProject) ||
 		!f.matchingImageFilter(container.Config.Image) ||
 		f.matchingNameExcludeFilter(containerName) {
 		return
@@ -118,6 +120,20 @@ func (f *dockerTargetFilter) matchingNameExcludeFilter(containerName string) boo
 			return true
 		}
 	}
+	return false
+}
+
+func (f *dockerTargetFilter) matchingComposeFilter(composeProject string) bool {
+	if len(f.config.composeProjectFilter) == 0 {
+		return true
+	} else if len(composeProject) > 0 {
+		for _, re := range f.config.composeProjectFilter {
+			if re.MatchString(composeProject) {
+				return true
+			}
+		}
+	}
+	klog.V(7).InfoS("Compose project name does not match filters", "compose", composeProject)
 	return false
 }
 
