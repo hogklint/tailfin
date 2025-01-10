@@ -47,6 +47,7 @@ The `container query` is a regular expression of the container name; you could p
  `--highlight`, `-H`         | `[]`                            | Log lines to highlight. (regular expression)
  `--image`, `-m`             | `[]`                            | Images to match (regular expression)
  `--include`, `-i`           | `[]`                            | Log lines to include. (regular expression)
+ `--label`, `-l`             | `[]`                            | Label query to filter on. One key or `key=value` per flag instance.
  `--max-log-requests`        | `-1`                            | Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow
  `--no-follow`               | `false`                         | Exit when all logs have been shown.
  `--only-log-lines`          | `false`                         | Print only log lines
@@ -203,12 +204,12 @@ tailfin backend -t --timezone Asia/Tokyo
 tailfin some-new-feature --context esc
 ```
 -->
-<!--
-*TODO* Tail the containers filtered by `run=nginx` label selector
+
+Tail the containers with the `demo` label present that has the `run` label set to `nginx`.
 ```
-tailfin -l run=nginx
+tailfin -l demo -l run=nginx
 ```
--->
+
 Pipe the log message to jq:
 ```
 tailfin backend -o json | jq .

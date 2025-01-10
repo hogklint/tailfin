@@ -12,6 +12,7 @@ type DockerConfig struct {
 	Timestamps            bool
 	TimestampFormat       string
 	Location              *time.Location
+	Label                 []string
 	ContainerQuery        []*regexp.Regexp
 	ExcludeContainerQuery []*regexp.Regexp
 	ComposeProjectQuery   []*regexp.Regexp
