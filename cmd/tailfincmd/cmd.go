@@ -129,9 +129,6 @@ func (o *options) Validate() error {
 }
 
 func (o *options) Run(cmd *cobra.Command) error {
-	if err := o.setVerbosity(); err != nil {
-		return err
-	}
 	if err := o.setColorList(); err != nil {
 		return err
 	}
@@ -579,6 +576,10 @@ func NewTailfinCmd(streams IOStreams) (*cobra.Command, error) {
 		Use:   "tailfin container-query",
 		Short: "Tail multiple docker containers",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := o.setVerbosity(); err != nil {
+				return err
+			}
+
 			// Output version information and exit
 			if o.version {
 				outputVersionInfo(o.Out)

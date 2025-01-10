@@ -5,7 +5,7 @@ build:
 	go build -o dist/tailfin ./cmd/tailfin
 
 TOOLS_BIN_DIR := $(CURDIR)/hack/tools/bin
-GORELEASER_VERSION ?= v1.25.1
+GORELEASER_VERSION ?= v2.3.2
 GORELEASER := $(TOOLS_BIN_DIR)/goreleaser
 GOLANGCI_LINT_VERSION ?= v1.63.1
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
@@ -13,7 +13,7 @@ GORELEASER_FILTER_VERSION ?= v0.3.0
 GORELEASER_FILTER := $(TOOLS_BIN_DIR)/goreleaser-filter
 
 $(GORELEASER):
-	GOBIN=$(TOOLS_BIN_DIR) go install github.com/goreleaser/goreleaser@$(GORELEASER_VERSION)
+	GOBIN=$(TOOLS_BIN_DIR) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
 
 $(GOLANGCI_LINT):
 	GOBIN=$(TOOLS_BIN_DIR) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
