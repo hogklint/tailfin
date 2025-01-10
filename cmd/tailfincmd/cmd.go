@@ -58,6 +58,7 @@ type options struct {
 	exclude          []string
 	include          []string
 	highlight        []string
+	label            []string
 	tail             int64
 	color            string
 	version          bool
@@ -122,8 +123,8 @@ func (o *options) Complete(args []string) error {
 }
 
 func (o *options) Validate() error {
-	if len(o.containerQuery) == 0 && len(o.image) == 0 && !o.stdin {
-		return errors.New("One of container-query, --image, or --stdin is required")
+	if len(o.containerQuery) == 0 && len(o.label) == 0 && len(o.image) == 0 && !o.stdin {
+		return errors.New("One of container-query, --label, --image, or --stdin is required")
 	}
 
 	return nil
@@ -227,6 +228,7 @@ func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
 		ComposeProjectQuery:   compose,
 		Timestamps:            timestampFormat != "",
 		TimestampFormat:       timestampFormat,
+		Label:                 o.label,
 		Location:              location,
 		ExcludeContainerQuery: excludeContainer,
 		Exclude:               exclude,
@@ -339,6 +341,7 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringArrayVarP(&o.image, "image", "m", o.image, "Images to match (regular expression)")
 	fs.StringArrayVarP(&o.include, "include", "i", o.include, "Log lines to include. (regular expression)")
 	fs.StringArrayVarP(&o.highlight, "highlight", "H", o.highlight, "Log lines to highlight. (regular expression)")
+	fs.StringArrayVarP(&o.label, "label", "l", o.label, "Label query to filter on. One `key` or `key=value` per flag instance.")
 	fs.IntVar(&o.maxLogRequests, "max-log-requests", o.maxLogRequests, "Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow")
 	fs.StringVarP(&o.output, "output", "o", o.output, "Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]")
 	fs.DurationVarP(&o.since, "since", "s", o.since, "Return logs newer than a relative duration like 5s, 2m, or 3h. The duration is truncated at container start time.")
@@ -356,7 +359,7 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&o.composeColors, "container-colors", o.composeColors, "Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.")
 	// TODO: --context for docker context? Seems to be a `docker` thing, not a dockerd thing.
 	// TODO: --ignore-compose to make it unaware of compose (e.g. use full container name)
-	// TODO: --label/-l
+	// TODO  --prompt??
 
 	fs.Lookup("timestamps").NoOptDefVal = "default"
 }

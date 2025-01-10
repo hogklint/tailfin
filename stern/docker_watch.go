@@ -24,6 +24,9 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 		args := filters.NewArgs()
 		args.Add("event", string(events.ActionDie))
 		args.Add("event", string(events.ActionStart))
+		for _, label := range config.Label {
+			args.Add("label", label)
+		}
 		opts := types.EventsOptions{Filters: args}
 		watcher, errc := client.Events(ctx, opts)
 

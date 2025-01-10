@@ -7,11 +7,16 @@ import (
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 )
 
 func ContainerGenerator(ctx context.Context, config *DockerConfig, client *dockerclient.Client) (iter.Seq[types.ContainerJSON], error) {
-	opts := container.ListOptions{All: true}
+	args := filters.NewArgs()
+	for _, label := range config.Label {
+		args.Add("label", label)
+	}
+	opts := container.ListOptions{All: true, Filters: args}
 	containers, err := client.ContainerList(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -23,7 +28,9 @@ func ContainerGenerator(ctx context.Context, config *DockerConfig, client *docke
 				fmt.Fprintf(config.ErrOut, "failed to inspect container id=%s: %v\n", c.ID, err)
 				continue
 			}
-			yield(container)
+			if !yield(container) {
+				return
+			}
 		}
 	}, nil
 }
