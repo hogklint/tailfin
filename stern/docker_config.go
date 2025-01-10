@@ -14,6 +14,7 @@ type DockerConfig struct {
 	Location              *time.Location
 	ContainerQuery        []*regexp.Regexp
 	ExcludeContainerQuery []*regexp.Regexp
+	ComposeProjectQuery   []*regexp.Regexp
 	Exclude               []*regexp.Regexp
 	ImageQuery            []*regexp.Regexp
 	Include               []*regexp.Regexp

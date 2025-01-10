@@ -53,6 +53,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 	filter := newDockerTargetFilter(dockerTargetFilterConfig{
 		containerFilter:        config.ContainerQuery,
 		containerExcludeFilter: config.ExcludeContainerQuery,
+		composeProjectFilter:   config.ComposeProjectQuery,
 		imageFilter:            config.ImageQuery,
 	})
 

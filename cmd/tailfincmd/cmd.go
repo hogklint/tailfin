@@ -62,6 +62,7 @@ type options struct {
 	color            string
 	version          bool
 	completion       string
+	compose          []string
 	template         string
 	templateFile     string
 	output           string
@@ -155,6 +156,11 @@ func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
 		return nil, errors.Wrap(err, "failed to compile regular expression for excluded container query")
 	}
 
+	compose, err := compileREs(o.compose)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to compile regular expression for compose filter")
+	}
+
 	exclude, err := compileREs(o.exclude)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to compile regular expression for exclusion filter")
@@ -218,6 +224,7 @@ func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
 
 	return &stern.DockerConfig{
 		ContainerQuery:        container,
+		ComposeProjectQuery:   compose,
 		Timestamps:            timestampFormat != "",
 		TimestampFormat:       timestampFormat,
 		Location:              location,
@@ -325,6 +332,7 @@ func (o *options) overrideFlagSetDefaultFromConfig(fs *pflag.FlagSet) error {
 func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.color, "color", o.color, "Force set color output. 'auto':  colorize if tty attached, 'always': always colorize, 'never': never colorize.")
 	fs.StringVar(&o.completion, "completion", o.completion, "Output stern command-line completion code for the specified shell. Can be 'bash', 'zsh' or 'fish'.")
+	fs.StringArrayVar(&o.compose, "compose", o.compose, "Compose project name to match (regular expression)")
 	fs.StringArrayVarP(&o.exclude, "exclude", "e", o.exclude, "Log lines to exclude. (regular expression)")
 	fs.StringArrayVarP(&o.excludeContainer, "exclude-container", "E", o.excludeContainer, "Container name to exclude. (regular expression)")
 	fs.BoolVar(&o.noFollow, "no-follow", o.noFollow, "Exit when all logs have been shown.")
@@ -347,7 +355,6 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringSliceVar(&o.containerColors, "compose-colors", o.containerColors, "Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., \"91,92,93,94,95,96\".")
 	fs.StringSliceVar(&o.composeColors, "container-colors", o.composeColors, "Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.")
 	// TODO: --context for docker context? Seems to be a `docker` thing, not a dockerd thing.
-	// TODO: --compose/-c to limit to a compose project
 	// TODO: --ignore-compose to make it unaware of compose (e.g. use full container name)
 	// TODO: --label/-l
 
