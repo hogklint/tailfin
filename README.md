@@ -74,17 +74,11 @@ You can use the config file to change the default values of tailfin options. The
 
 ```yaml
 # <flag name>: <value>
-max-log-requests: 999
-timestamps: short
-```
-<!-- TODO (tail)
-```yaml
-# <flag name>: <value>
 tail: 10
 max-log-requests: 999
 timestamps: short
 ```
--->
+
 You can change the config file path with `--config` flag or `TAILFINCONFIG` environment variable.
 ### templates
 
