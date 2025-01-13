@@ -25,6 +25,7 @@ type DockerTail struct {
 	Tty            bool
 	StartedAt      time.Time
 	FinishedAt     string
+	SeenPreviously bool
 	composeColor   *color.Color
 	containerColor *color.Color
 	Options        *TailOptions
@@ -42,6 +43,7 @@ func NewDockerTail(
 	tty bool,
 	startedAt time.Time,
 	finishedAt string,
+	seenPreviously bool,
 	tmpl *template.Template,
 	out, errOut io.Writer,
 	options *TailOptions,
@@ -56,6 +58,7 @@ func NewDockerTail(
 		Tty:            tty,
 		StartedAt:      startedAt,
 		FinishedAt:     finishedAt,
+		SeenPreviously: seenPreviously,
 		Options:        options,
 		composeColor:   composeColor,
 		containerColor: containerColor,
@@ -99,22 +102,21 @@ func (t *DockerTail) Close() {
 	close(t.closed)
 }
 
-// The maximum "since time" is the time the container was last started. Because logs are sometimes missing when using
-// the start time, the finished time is used instead (because there are no logs between the finish and start time). If
-// the Options.SinceTime is after the finished time it'll be used with the same reasoning in addition to it might be
-// after the start time, which in that case is the desired "since time".
+// Since log streams end when containers terminate tailfin must keep track of when a container has been previously
+// tailed and use a "since"-time from last finish/start. Otherwise it will include logs from previous starts thus
+// printing logs already printed.
 func (t *DockerTail) getSinceTime() time.Time {
-	finished, err := time.Parse(time.RFC3339, t.FinishedAt)
-	// If there's no finish time it should mean the container only started once so it's safe to use the options time. The
-	// same applies if the finish time is earlier than the option time.
-	if err != nil ||
-		finished.Before(t.Options.DockerSinceTime) ||
+	if !t.SeenPreviously ||
 		t.StartedAt.Before(t.Options.DockerSinceTime) {
 		return t.Options.DockerSinceTime
 	}
 
-	// Sometimes early logs are missing if StartedAt is used
-	if finished.Before(t.StartedAt) {
+	// If there's no finish time it should mean the container only started once so it's safe to use the options time.
+	finished, err := time.Parse(time.RFC3339, t.FinishedAt)
+	if err != nil {
+		return t.Options.DockerSinceTime
+	} else if finished.Before(t.StartedAt) {
+		// Sometimes early logs are missing if StartedAt is used
 		return finished
 	}
 	return t.StartedAt

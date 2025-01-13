@@ -52,7 +52,7 @@ The `container query` is a regular expression of the container name; you could p
  `--no-follow`               | `false`                         | Exit when all logs have been shown.
  `--only-log-lines`          | `false`                         | Print only log lines
  `--output`, `-o`            | `default`                       | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
- `--since`, `-s`             | `48h0m0s`                       | Return logs newer than a relative duration like 5s, 2m, or 3h. The duration is truncated at container start time.
+ `--since`, `-s`             | `48h0m0s`                       | Return logs newer than a relative duration like 5s, 2m, or 3h.
  `--stdin`                   | `false`                         | Parse logs from stdin. All Docker related flags are ignored when it is set.
  `--tail`                    | `-1`                            | The number of lines from the end of the logs to show. Defaults to -1, showing all logs.
  `--template`                |                                 | Template to use for log lines, leave empty to use --output flag.
