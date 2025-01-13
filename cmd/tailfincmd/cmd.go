@@ -113,7 +113,6 @@ func (o *options) Complete(args []string) error {
 	}
 
 	var err error
-	// TODO More error handling here. err == nil even if no daemon is found
 	o.dockerClient, err = dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
 	if err != nil {
 		panic(err)
@@ -142,6 +141,11 @@ func (o *options) Run(cmd *cobra.Command) error {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	_, err = o.dockerClient.Ping(ctx)
+	if err != nil {
+		return err
+	}
 
 	return stern.RunDocker(ctx, o.dockerClient, config)
 }
