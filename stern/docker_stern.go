@@ -38,6 +38,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			target.Tty,
 			target.StartedAt,
 			target.FinishedAt,
+			target.SeenPreviously,
 			config.Template,
 			config.Out,
 			config.ErrOut,
@@ -55,7 +56,9 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		containerExcludeFilter: config.ExcludeContainerQuery,
 		composeProjectFilter:   config.ComposeProjectQuery,
 		imageFilter:            config.ImageQuery,
-	})
+	},
+		max(config.MaxLogRequests*2, 100),
+	)
 
 	tailTarget := func(target *DockerTarget) error {
 		tail := newTail(target)

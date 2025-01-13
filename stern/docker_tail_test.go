@@ -15,63 +15,72 @@ func TestGetSinceTime(t *testing.T) {
 		startTime   time.Time
 		finishTime  string
 		optionsTime time.Time
+		seen        bool
 		expected    time.Time
 	}{
 		{
-			desc:        "invalid finish, earlier start",
+			desc:        "invalid finish, seen",
 			startTime:   t1,
 			finishTime:  "",
 			optionsTime: t2,
+			seen:        true,
 			expected:    t2,
 		},
 		{
-			desc:        "invalid finish, later start",
-			startTime:   t2,
-			finishTime:  "",
-			optionsTime: t1,
+			desc:        "finish earlier than option, seen",
+			startTime:   t3,
+			finishTime:  t1.Format(time.RFC3339),
+			optionsTime: t2,
+			seen:        true,
 			expected:    t1,
 		},
 		{
-			desc:        "finish earlier than option",
-			startTime:   t3,
-			finishTime:  t1.Format(time.RFC3339),
-			optionsTime: t2,
-			expected:    t2,
-		},
-		{
-			desc:        "start earlier than option",
+			desc:        "start earlier than option, seen",
 			startTime:   t1,
 			finishTime:  t3.Format(time.RFC3339),
 			optionsTime: t2,
+			seen:        true,
 			expected:    t2,
 		},
 		{
-			desc:        "option later than both 1",
+			desc:        "option later than both, seen",
 			startTime:   t2,
 			finishTime:  t1.Format(time.RFC3339),
 			optionsTime: t3,
+			seen:        true,
 			expected:    t3,
 		},
 		{
-			desc:        "option later than both 2",
-			startTime:   t1,
-			finishTime:  t2.Format(time.RFC3339),
-			optionsTime: t3,
-			expected:    t3,
-		},
-		{
-			desc:        "truncated to start",
+			desc:        "truncated to start, seen",
 			startTime:   t2,
 			finishTime:  t3.Format(time.RFC3339),
 			optionsTime: t1,
+			seen:        true,
 			expected:    t2,
 		},
 		{
-			desc:        "truncated to finish",
+			desc:        "truncated to finish, seen",
 			startTime:   t3,
 			finishTime:  t2.Format(time.RFC3339),
 			optionsTime: t1,
+			seen:        true,
 			expected:    t2,
+		},
+		{
+			desc:        "start earlier than option, not seen",
+			startTime:   t1,
+			finishTime:  t2.Format(time.RFC3339),
+			optionsTime: t3,
+			seen:        false,
+			expected:    t3,
+		},
+		{
+			desc:        "start later than option, not seen",
+			startTime:   t2,
+			finishTime:  t3.Format(time.RFC3339),
+			optionsTime: t1,
+			seen:        false,
+			expected:    t1,
 		},
 	}
 	for _, tt := range tests {
@@ -79,7 +88,7 @@ func TestGetSinceTime(t *testing.T) {
 			options := &TailOptions{
 				DockerSinceTime: tt.optionsTime,
 			}
-			tail := NewDockerTail(nil, "", "", "", false, tt.startTime, tt.finishTime, nil, io.Discard, io.Discard, options)
+			tail := NewDockerTail(nil, "", "", "", false, tt.startTime, tt.finishTime, tt.seen, nil, io.Discard, io.Discard, options)
 
 			actual := tail.getSinceTime()
 			if tt.expected != actual {

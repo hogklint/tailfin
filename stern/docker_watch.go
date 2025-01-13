@@ -14,7 +14,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 	added := make(chan *DockerTarget)
 	go func() {
 		visitor := func(t *DockerTarget) {
-			klog.V(7).InfoS("New container", "id", t.Id, "name", t.Name)
+			klog.V(7).InfoS("Active container", "id", t.Id, "name", t.Name)
 			added <- t
 		}
 		ctx, cancel := context.WithCancel(ctx)
@@ -24,6 +24,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 		args := filters.NewArgs()
 		args.Add("event", string(events.ActionDie))
 		args.Add("event", string(events.ActionStart))
+		args.Add("event", string(events.ActionDestroy))
 		for _, label := range config.Label {
 			args.Add("label", label)
 		}
@@ -52,6 +53,8 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 					klog.V(8).InfoS("Container inspect", "id", e.ID, "container JSON", container)
 					filter.visit(container, visitor)
 				case events.ActionDie:
+					filter.inactive(e.ID)
+				case events.ActionDestroy:
 					filter.forget(e.ID)
 				}
 			case <-ctx.Done():
