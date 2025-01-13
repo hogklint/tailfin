@@ -8,6 +8,7 @@ require (
 	github.com/AlecAivazis/survey/v2 v2.3.7
 	github.com/docker/docker v26.1.3+incompatible
 	github.com/fatih/color v1.17.0
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cast v1.7.0
