@@ -33,9 +33,6 @@ import (
 	"text/template"
 	"time"
 
-	// load all auth plugins
-	_ "k8s.io/client-go/plugin/pkg/client/auth"
-
 	dockerclient "github.com/docker/docker/client"
 )
 

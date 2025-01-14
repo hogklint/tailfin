@@ -17,9 +17,8 @@ line 4`
 	tmpl := template.Must(template.New("").Parse(`{{printf "%s\n" .Message}}`))
 
 	tests := []struct {
-		name      string
-		resumeReq *ResumeRequest
-		expected  []byte
+		name     string
+		expected []byte
 	}{
 		{
 			name: "normal",
