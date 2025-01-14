@@ -28,13 +28,14 @@ type Log struct {
 	// Namespace of the pod
 	Namespace string `json:"namespace"`
 
+	// TODO REMOVE
 	// PodName of the pod
 	PodName string `json:"podName"`
 
-	// ContainerName of the container
+	// TODO change to container
 	ContainerName string `json:"containerName"`
 
-	// Docker compose project name
+	// TODO hange ot "compose"
 	ComposeProject string `json:"composeProject"`
 
 	PodColor       *color.Color `json:"-"`
