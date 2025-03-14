@@ -183,9 +183,6 @@ func (t *DockerTail) consumeLine(line string) {
 func (t *DockerTail) Print(msg string) {
 	vm := Log{
 		Message:        msg,
-		NodeName:       "",
-		Namespace:      "",
-		PodName:        "",
 		ContainerName:  t.ContainerName,
 		ComposeProject: t.ComposeProject,
 		ComposeColor:   t.composeColor,

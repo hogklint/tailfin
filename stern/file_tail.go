@@ -61,11 +61,7 @@ func (t *FileTail) ConsumeReader(reader *bufio.Reader) error {
 func (t *FileTail) Print(msg string) {
 	vm := Log{
 		Message:        msg,
-		NodeName:       "",
-		Namespace:      "",
-		PodName:        "",
 		ContainerName:  "",
-		PodColor:       color.New(color.Reset),
 		ContainerColor: color.New(color.Reset),
 	}
 
