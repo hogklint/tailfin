@@ -22,11 +22,9 @@ type Log struct {
 	// Message is the log message itself
 	Message string `json:"message"`
 
-	// TODO change to container
-	ContainerName string `json:"containerName"`
+	ContainerName string `json:"container"`
 
-	// TODO hange ot "compose"
-	ComposeProject string `json:"composeProject"`
+	ComposeProject string `json:"compose"`
 
 	ComposeColor   *color.Color `json:"-"`
 	ContainerColor *color.Color `json:"-"`
