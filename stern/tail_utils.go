@@ -22,23 +22,10 @@ type Log struct {
 	// Message is the log message itself
 	Message string `json:"message"`
 
-	// Node name of the pod
-	NodeName string `json:"nodeName"`
+	ContainerName string `json:"container"`
 
-	// Namespace of the pod
-	Namespace string `json:"namespace"`
+	ComposeProject string `json:"compose"`
 
-	// TODO REMOVE
-	// PodName of the pod
-	PodName string `json:"podName"`
-
-	// TODO change to container
-	ContainerName string `json:"containerName"`
-
-	// TODO hange ot "compose"
-	ComposeProject string `json:"composeProject"`
-
-	PodColor       *color.Color `json:"-"`
 	ComposeColor   *color.Color `json:"-"`
 	ContainerColor *color.Color `json:"-"`
 }
