@@ -24,8 +24,8 @@ func colorIndex(name string) uint32 {
 	return hash.Sum32() % uint32(len(colorList))
 }
 
-func SetColorList(podColors, containerColors []string) error {
-	colors, err := parseColors(podColors, containerColors)
+func SetColorList(composeColors, containerColors []string) error {
+	colors, err := parseColors(composeColors, containerColors)
 	if err != nil {
 		return err
 	}
@@ -47,10 +47,10 @@ func parseColors(composeColors, containerColors []string) ([][2]*color.Color, er
 	return createColorPairs(composeColors, containerColors)
 }
 
-func createColorPairs(podColors, containerColors []string) ([][2]*color.Color, error) {
-	colorList := make([][2]*color.Color, 0, len(podColors))
-	for i := 0; i < len(podColors); i++ {
-		podColor, err := sgrSequenceToColor(podColors[i])
+func createColorPairs(composeColors, containerColors []string) ([][2]*color.Color, error) {
+	colorList := make([][2]*color.Color, 0, len(composeColors))
+	for i := 0; i < len(composeColors); i++ {
+		composeColor, err := sgrSequenceToColor(composeColors[i])
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +58,7 @@ func createColorPairs(podColors, containerColors []string) ([][2]*color.Color, e
 		if err != nil {
 			return nil, err
 		}
-		colorList = append(colorList, [2]*color.Color{podColor, containerColor})
+		colorList = append(colorList, [2]*color.Color{composeColor, containerColor})
 	}
 	return colorList, nil
 }

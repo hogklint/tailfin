@@ -23,7 +23,6 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			Exclude:         config.Exclude,
 			Include:         config.Include,
 			Highlight:       config.Highlight,
-			Namespace:       false,
 			DockerTailLines: strconv.FormatInt(config.TailLines, 10),
 			Follow:          config.Follow,
 			OnlyLogLines:    config.OnlyLogLines,

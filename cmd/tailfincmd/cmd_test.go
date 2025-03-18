@@ -1,7 +1,8 @@
-package cmd
+package tailfincmd
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,13 +14,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/hogklint/tailfin/stern"
 	"github.com/spf13/pflag"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/utils/ptr"
 )
 
-func TestSternCommand(t *testing.T) {
+func TestTailfinCommand(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
@@ -33,14 +30,16 @@ func TestSternCommand(t *testing.T) {
 		{
 			"Output completion code for bash with --completion=bash",
 			[]string{"--completion=bash"},
-			"complete -o default -F __start_stern stern",
+			"complete -o default -F __start_tailfin tailfin",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			streams, _, out, _ := genericclioptions.NewTestIOStreams()
-			stern, err := NewSternCmd(streams)
+			var out bytes.Buffer
+			var errout bytes.Buffer
+			streams := IOStreams{Out: &out, ErrOut: &errout}
+			stern, err := NewTailfinCmd(streams)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -58,7 +57,9 @@ func TestSternCommand(t *testing.T) {
 }
 
 func TestOptionsComplete(t *testing.T) {
-	streams := genericclioptions.NewTestIOStreamsDiscard()
+	var out bytes.Buffer
+	var errout bytes.Buffer
+	streams := IOStreams{Out: &out, ErrOut: &errout}
 
 	tests := []struct {
 		name                   string
@@ -75,7 +76,7 @@ func TestOptionsComplete(t *testing.T) {
 		{
 			name: "Set STERNCONFIG env to ./config.yaml",
 			env: map[string]string{
-				"STERNCONFIG": "./config.yaml",
+				"TAILFINCONFIG": "./config.yaml",
 			},
 			args:                   []string{},
 			expectedConfigFilePath: "./config.yaml",
@@ -99,7 +100,9 @@ func TestOptionsComplete(t *testing.T) {
 }
 
 func TestOptionsValidate(t *testing.T) {
-	streams := genericclioptions.NewTestIOStreamsDiscard()
+	var out bytes.Buffer
+	var errout bytes.Buffer
+	streams := IOStreams{Out: &out, ErrOut: &errout}
 
 	tests := []struct {
 		name string
@@ -109,54 +112,43 @@ func TestOptionsValidate(t *testing.T) {
 		{
 			"No required options",
 			NewOptions(streams),
-			"One of pod-query, --selector, --field-selector, --prompt or --stdin is required",
+			"One of container-query, --label, --image, or --stdin is required",
 		},
 		{
-			"Specify both selector and resource",
+			"Specify container-query",
 			func() *options {
 				o := NewOptions(streams)
-				o.selector = "app=nginx"
-				o.resource = "deployment/nginx"
-
-				return o
-			}(),
-			"--selector and the <resource>/<name> query can not be set at the same time",
-		},
-		{
-			"Use prompt",
-			func() *options {
-				o := NewOptions(streams)
-				o.prompt = true
+				o.containerQuery = []string{"."}
 
 				return o
 			}(),
 			"",
 		},
 		{
-			"Specify pod-query",
+			"Specify stdin",
 			func() *options {
 				o := NewOptions(streams)
-				o.podQuery = "."
+				o.stdin = true
 
 				return o
 			}(),
 			"",
 		},
 		{
-			"Specify selector",
+			"Specify image",
 			func() *options {
 				o := NewOptions(streams)
-				o.selector = "app=nginx"
+				o.image = []string{"nginx"}
 
 				return o
 			}(),
 			"",
 		},
 		{
-			"Specify fieldSelector",
+			"Specify label",
 			func() *options {
 				o := NewOptions(streams)
-				o.fieldSelector = "spec.nodeName=kind-kind"
+				o.label = []string{"app"}
 
 				return o
 			}(),
@@ -182,14 +174,17 @@ func TestOptionsValidate(t *testing.T) {
 
 func TestOptionsGenerateTemplate(t *testing.T) {
 	t.Setenv("NO_COLOR", "1")
-	streams := genericclioptions.NewTestIOStreamsDiscard()
+	var out bytes.Buffer
+	var errout bytes.Buffer
+	streams := IOStreams{Out: &out, ErrOut: &errout}
 
 	tests := []struct {
-		name      string
-		o         *options
-		message   string
-		want      string
-		wantError bool
+		name        string
+		o           *options
+		message     string
+		want        string
+		wantError   bool
+		withCompose bool
 	}{
 		{
 			"output=default",
@@ -200,21 +195,22 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			"default message",
-			"pod1 container1 default message\n",
+			"container1 default message\n",
+			false,
 			false,
 		},
 		{
-			"output=default+allNamespaces",
+			"output=default with compose",
 			func() *options {
 				o := NewOptions(streams)
 				o.output = "default"
-				o.allNamespaces = true
 
 				return o
 			}(),
 			"default message",
-			"ns1 pod1 container1 default message\n",
+			"compose1 container1 default message\n",
 			false,
+			true,
 		},
 		{
 			"output=raw",
@@ -227,6 +223,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			"raw message",
 			"raw message\n",
 			false,
+			false,
 		},
 		{
 			"output=json",
@@ -237,9 +234,10 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			"json message",
-			`{"message":"json message","nodeName":"node1","namespace":"ns1","podName":"pod1","containerName":"container1","composeProject":""}
+			`{"message":"json message","nodeName":"","namespace":"","podName":"","containerName":"container1","composeProject":"compose1"}
 `,
 			false,
+			true,
 		},
 		{
 			"output=extjson",
@@ -250,23 +248,10 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			`{"msg":"extjson message"}`,
-			`{"pod": "pod1", "container": "container1", "message": {"msg":"extjson message"}}
+			`{"compose": "compose1", "container": "container1", "message": {"msg":"extjson message"}}
 `,
 			false,
-		},
-		{
-			"output=extjson+allNamespaces",
-			func() *options {
-				o := NewOptions(streams)
-				o.output = "extjson"
-				o.allNamespaces = true
-
-				return o
-			}(),
-			`{"msg":"extjson message"}`,
-			`{"namespace": "ns1", "pod": "pod1", "container": "container1", "message": {"msg":"extjson message"}}
-`,
-			false,
+			true,
 		},
 		{
 			"output=ppextjson",
@@ -278,31 +263,13 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			}(),
 			`{"msg":"ppextjson message"}`,
 			`{
-  "pod": "pod1",
+  "compose": "compose1",
   "container": "container1",
   "message": {"msg":"ppextjson message"}
 }
 `,
 			false,
-		},
-		{
-			"output=ppextjson+allNamespaces",
-			func() *options {
-				o := NewOptions(streams)
-				o.output = "ppextjson"
-				o.allNamespaces = true
-
-				return o
-			}(),
-			`{"msg":"ppextjson message"}`,
-			`{
-  "namespace": "ns1",
-  "pod": "pod1",
-  "container": "container1",
-  "message": {"msg":"ppextjson message"}
-}
-`,
-			false,
+			true,
 		},
 		{
 			"invalid output",
@@ -315,18 +282,20 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			"message",
 			"",
 			true,
+			false,
 		},
 		{
 			"template",
 			func() *options {
 				o := NewOptions(streams)
-				o.template = "Message={{.Message}} NodeName={{.NodeName}} Namespace={{.Namespace}} PodName={{.PodName}} ContainerName={{.ContainerName}}"
+				o.template = "Message={{.Message}} ComposeProject={{.ComposeProject}} ContainerName={{.ContainerName}}"
 
 				return o
 			}(),
 			"template message", // no new line
-			"Message=template message NodeName=node1 Namespace=ns1 PodName=pod1 ContainerName=container1",
+			"Message=template message ComposeProject=compose1 ContainerName=container1",
 			false,
+			true,
 		},
 		{
 			"invalid template",
@@ -339,6 +308,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			"template message",
 			"",
 			true,
+			false,
 		},
 		{
 			"template-file",
@@ -349,8 +319,9 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			"template message",
-			"pod1 container1 template message",
+			"compose1 container1 template message\n",
 			false,
+			true,
 		},
 		{
 			"template-file-json-log-ts-float",
@@ -361,8 +332,9 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			`{"ts": 123, "level": "INFO", "msg": "template message"}`,
-			"pod1 container1 [1970-01-01T00:02:03Z] INFO template message",
+			"compose1 container1 [1970-01-01T00:02:03Z] INFO template message\n",
 			false,
+			true,
 		},
 		{
 			"template-file-json-log-ts-str",
@@ -373,8 +345,9 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			`{"ts": "1970-01-01T01:02:03+01:00", "level": "INFO", "msg": "template message"}`,
-			"pod1 container1 [1970-01-01T00:02:03Z] INFO template message",
+			"compose1 container1 [1970-01-01T00:02:03Z] INFO template message\n",
 			false,
+			true,
 		},
 		{
 			"template-to-timestamp-with-timezone",
@@ -385,6 +358,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			}(),
 			`2024-01-01T05:00:00`,
 			`Jan 01 2024 00:00 EST`,
+			false,
 			false,
 		},
 		{
@@ -397,6 +371,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			`2024-01-01T05:00:00`,
 			`Jan 01 2024 05:00 UTC`,
 			false,
+			false,
 		},
 	}
 
@@ -404,12 +379,12 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			log := stern.Log{
 				Message:        tt.message,
-				NodeName:       "node1",
-				Namespace:      "ns1",
-				PodName:        "pod1",
 				ContainerName:  "container1",
-				PodColor:       color.New(color.FgRed),
 				ContainerColor: color.New(color.FgBlue),
+			}
+			if tt.withCompose {
+				log.ComposeProject = "compose1"
+				log.ComposeColor = color.New(color.FgBlue)
 			}
 			tmpl, err := tt.o.generateTemplate()
 
@@ -436,42 +411,36 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 	}
 }
 
-func TestOptionsSternConfig(t *testing.T) {
-	streams := genericclioptions.NewTestIOStreamsDiscard()
+func TestOptionsTailfinConfig(t *testing.T) {
+	var out bytes.Buffer
+	var errout bytes.Buffer
+	streams := IOStreams{Out: &out, ErrOut: &errout}
 
 	local, _ := time.LoadLocation("Local")
 	utc, _ := time.LoadLocation("UTC")
-	labelSelector, _ := labels.Parse("l=sel")
-	fieldSelector, _ := fields.ParseSelector("f=field,spec.nodeName=node1")
 
 	re := regexp.MustCompile
 
-	defaultConfig := func() *stern.Config {
-		return &stern.Config{
-			Namespaces:            []string{},
-			PodQuery:              re(""),
-			ExcludePodQuery:       nil,
+	defaultConfig := func() *stern.DockerConfig {
+		return &stern.DockerConfig{
 			Timestamps:            false,
 			TimestampFormat:       "",
 			Location:              local,
-			ContainerQuery:        re(".*"),
+			Label:                 []string(nil),
+			ContainerQuery:        []*regexp.Regexp(nil),
 			ExcludeContainerQuery: nil,
-			ContainerStates:       []stern.ContainerState{stern.ALL_STATES},
+			ComposeProjectQuery:   nil,
 			Exclude:               nil,
+			ImageQuery:            []*regexp.Regexp(nil),
 			Include:               nil,
 			Highlight:             nil,
-			InitContainers:        true,
-			EphemeralContainers:   true,
 			Since:                 48 * time.Hour,
-			AllNamespaces:         false,
-			LabelSelector:         labels.Everything(),
-			FieldSelector:         fields.Everything(),
-			TailLines:             nil,
+			TailLines:             -1,
 			Template:              nil, // ignore when comparing
 			Follow:                true,
-			Resource:              "",
 			OnlyLogLines:          false,
 			MaxLogRequests:        50,
+			Stdin:                 false,
 
 			Out:    streams.Out,
 			ErrOut: streams.ErrOut,
@@ -481,7 +450,7 @@ func TestOptionsSternConfig(t *testing.T) {
 	tests := []struct {
 		name      string
 		o         *options
-		want      *stern.Config
+		want      *stern.DockerConfig
 		wantError bool
 	}{
 		{
@@ -494,91 +463,42 @@ func TestOptionsSternConfig(t *testing.T) {
 			"change all options",
 			func() *options {
 				o := NewOptions(streams)
-				o.namespaces = []string{"ns1", "ns2"}
-				o.podQuery = "query1"
-				o.excludePod = []string{"exp1", "exp2"}
 				o.timestamps = "default"
 				o.timezone = "UTC" // Location
-				o.container = "container1"
+				o.containerQuery = []string{"container1"}
 				o.excludeContainer = []string{"exc1", "exc2"}
-				o.containerStates = []string{"running", "terminated"}
+				o.compose = []string{"compose1"}
 				o.exclude = []string{"ex1", "ex2"}
+				o.image = []string{"nginx"}
 				o.include = []string{"in1", "in2"}
 				o.highlight = []string{"hi1", "hi2"}
-				o.initContainers = false
-				o.ephemeralContainers = false
 				o.since = 1 * time.Hour
-				o.allNamespaces = true
-				o.selector = "l=sel"
-				o.fieldSelector = "f=field"
+				o.label = []string{"app"}
 				o.tail = 10
 				o.noFollow = true // Follow = false
 				o.maxLogRequests = 30
-				o.resource = "res1"
 				o.onlyLogLines = true
-				o.node = "node1"
 
 				return o
 			}(),
-			func() *stern.Config {
+			func() *stern.DockerConfig {
 				c := defaultConfig()
-				c.Namespaces = []string{"ns1", "ns2"}
-				c.PodQuery = re("query1")
-				c.ExcludePodQuery = []*regexp.Regexp{re("exp1"), re("exp2")}
 				c.Timestamps = true
 				c.TimestampFormat = stern.TimestampFormatDefault
 				c.Location = utc
-				c.ContainerQuery = re("container1")
+				c.ContainerQuery = []*regexp.Regexp{re("container1")}
 				c.ExcludeContainerQuery = []*regexp.Regexp{re("exc1"), re("exc2")}
-				c.ContainerStates = []stern.ContainerState{stern.RUNNING, stern.TERMINATED}
+				c.ComposeProjectQuery = []*regexp.Regexp{re("compose1")}
 				c.Exclude = []*regexp.Regexp{re("ex1"), re("ex2")}
+				c.ImageQuery = []*regexp.Regexp{re("nginx")}
 				c.Include = []*regexp.Regexp{re("in1"), re("in2")}
 				c.Highlight = []*regexp.Regexp{re("hi1"), re("hi2")}
-				c.InitContainers = false
-				c.EphemeralContainers = false
 				c.Since = 1 * time.Hour
-				c.AllNamespaces = true
-				c.LabelSelector = labelSelector
-				c.FieldSelector = fieldSelector
-				c.TailLines = ptr.To[int64](10)
+				c.Label = []string{"app"}
+				c.TailLines = 10
 				c.Follow = false
-				c.Resource = "res1"
 				c.OnlyLogLines = true
 				c.MaxLogRequests = 30
-
-				return c
-			}(),
-			false,
-		},
-		{
-			"fieldSelector without node",
-			func() *options {
-				o := NewOptions(streams)
-				o.fieldSelector = "f=field"
-
-				return o
-			}(),
-			func() *stern.Config {
-				c := defaultConfig()
-				sel, _ := fields.ParseSelector("f=field")
-				c.FieldSelector = sel
-
-				return c
-			}(),
-			false,
-		},
-		{
-			"node without fieldSelector",
-			func() *options {
-				o := NewOptions(streams)
-				o.node = "node1"
-
-				return o
-			}(),
-			func() *stern.Config {
-				c := defaultConfig()
-				sel, _ := fields.ParseSelector("spec.nodeName=node1")
-				c.FieldSelector = sel
 
 				return c
 			}(),
@@ -592,7 +512,7 @@ func TestOptionsSternConfig(t *testing.T) {
 
 				return o
 			}(),
-			func() *stern.Config {
+			func() *stern.DockerConfig {
 				c := defaultConfig()
 				c.Timestamps = true
 				c.TimestampFormat = stern.TimestampFormatShort
@@ -609,7 +529,7 @@ func TestOptionsSternConfig(t *testing.T) {
 
 				return o
 			}(),
-			func() *stern.Config {
+			func() *stern.DockerConfig {
 				c := defaultConfig()
 				c.Follow = false
 				c.MaxLogRequests = 5 // default of noFollow
@@ -622,51 +542,25 @@ func TestOptionsSternConfig(t *testing.T) {
 			"nil should be allowed",
 			func() *options {
 				o := NewOptions(streams)
-				o.excludePod = nil
 				o.excludeContainer = nil
-				o.containerStates = nil
-				o.namespaces = nil
 				o.exclude = nil
 				o.include = nil
 				o.highlight = nil
 
 				return o
 			}(),
-			func() *stern.Config {
+			func() *stern.DockerConfig {
 				c := defaultConfig()
-				c.ContainerStates = []stern.ContainerState{}
 
 				return c
 			}(),
 			false,
 		},
 		{
-			"error podQuery",
+			"error container-query",
 			func() *options {
 				o := NewOptions(streams)
-				o.podQuery = "[invalid"
-
-				return o
-			}(),
-			nil,
-			true,
-		},
-		{
-			"error excludePod",
-			func() *options {
-				o := NewOptions(streams)
-				o.excludePod = []string{"exp1", "[invalid"}
-
-				return o
-			}(),
-			nil,
-			true,
-		},
-		{
-			"error container",
-			func() *options {
-				o := NewOptions(streams)
-				o.container = "[invalid"
+				o.containerQuery = []string{"[invalid"}
 
 				return o
 			}(),
@@ -718,39 +612,6 @@ func TestOptionsSternConfig(t *testing.T) {
 			true,
 		},
 		{
-			"error containerStates",
-			func() *options {
-				o := NewOptions(streams)
-				o.containerStates = []string{"running", "invalid"}
-
-				return o
-			}(),
-			nil,
-			true,
-		},
-		{
-			"error selector",
-			func() *options {
-				o := NewOptions(streams)
-				o.selector = "-"
-
-				return o
-			}(),
-			nil,
-			true,
-		},
-		{
-			"error fieldSelector",
-			func() *options {
-				o := NewOptions(streams)
-				o.fieldSelector = "-"
-
-				return o
-			}(),
-			nil,
-			true,
-		},
-		{
 			"error color",
 			func() *options {
 				o := NewOptions(streams)
@@ -795,10 +656,11 @@ func TestOptionsSternConfig(t *testing.T) {
 			true,
 		},
 	}
+	// TODO test label
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.o.sternConfig()
+			got, err := tt.o.tailfinConfig()
 			if tt.wantError {
 				if err == nil {
 					t.Errorf("expected error, but got no error")
@@ -886,7 +748,7 @@ func TestOptionsOverrideFlagSetDefaultFromConfig(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			o := NewOptions(genericclioptions.NewTestIOStreamsDiscard())
+			o := NewOptions(IOStreams{Out: io.Discard, ErrOut: io.Discard})
 			fs := pflag.NewFlagSet("", pflag.ExitOnError)
 			o.AddFlags(fs)
 
@@ -947,7 +809,7 @@ func TestOptionsOverrideFlagSetDefaultFromConfigArray(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt
 		t.Run(tt.config, func(t *testing.T) {
-			o := NewOptions(genericclioptions.NewTestIOStreamsDiscard())
+			o := NewOptions(IOStreams{Out: io.Discard, ErrOut: io.Discard})
 			fs := pflag.NewFlagSet("", pflag.ExitOnError)
 			o.AddFlags(fs)
 			if err := fs.Parse([]string{"--config=" + tt.config}); err != nil {

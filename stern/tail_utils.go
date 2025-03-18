@@ -8,8 +8,13 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// RFC3339Nano with trailing zeros
+const TimestampFormatDefault = "2006-01-02T15:04:05.000000000Z07:00"
+
+// time.DateTime without year
+const TimestampFormatShort = "01-02 15:04:05"
 
 // Log is the object which will be used together with the template to generate
 // the output.
@@ -23,13 +28,14 @@ type Log struct {
 	// Namespace of the pod
 	Namespace string `json:"namespace"`
 
+	// TODO REMOVE
 	// PodName of the pod
 	PodName string `json:"podName"`
 
-	// ContainerName of the container
+	// TODO change to container
 	ContainerName string `json:"containerName"`
 
-	// Docker compose project name
+	// TODO hange ot "compose"
 	ComposeProject string `json:"composeProject"`
 
 	PodColor       *color.Color `json:"-"`
@@ -42,14 +48,10 @@ type TailOptions struct {
 	TimestampFormat string
 	Location        *time.Location
 
-	SinceSeconds    *int64
 	DockerSinceTime time.Time
-	SinceTime       *metav1.Time
 	Exclude         []*regexp.Regexp
 	Include         []*regexp.Regexp
 	Highlight       []*regexp.Regexp
-	Namespace       bool
-	TailLines       *int64
 	DockerTailLines string
 	Follow          bool
 	OnlyLogLines    bool
@@ -121,4 +123,12 @@ func (o TailOptions) UpdateTimezoneAndFormat(timestamp string) (string, error) {
 		format = o.TimestampFormat
 	}
 	return t.In(o.Location).Format(format), nil
+}
+
+func splitLogLine(line string) (timestamp string, content string, err error) {
+	idx := strings.IndexRune(line, ' ')
+	if idx == -1 {
+		return "", "", errors.New("missing timestamp")
+	}
+	return line[:idx], line[idx+1:], nil
 }
