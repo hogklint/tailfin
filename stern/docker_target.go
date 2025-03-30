@@ -75,7 +75,7 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 	}
 
 	var resumeRequest *ResumeRequest
-	if rr, ok := f.seenContainers.Get(container.ID); ok {
+	if rr, ok := f.seenContainers.Peek(container.ID); ok {
 		resumeRequest = rr
 	}
 	target := &DockerTarget{
@@ -172,6 +172,9 @@ func (f *dockerTargetFilter) inactive(containerId string) {
 }
 
 func (f *dockerTargetFilter) setResumeRequest(containerId string, resume *ResumeRequest) {
+	if resume == nil {
+		return
+	}
 	klog.V(7).InfoS("Storing resume request", "target", containerId, "resume", resume)
 	f.seenContainers.Add(containerId, resume)
 }
