@@ -2,9 +2,10 @@ package stern
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"testing"
-	"time"
+	"text/template"
 )
 
 func TestDetermineColor(t *testing.T) {
@@ -73,9 +74,6 @@ func TestPrintStarting(t *testing.T) {
 			"name",
 			compose,
 			false,
-			time.Now(),
-			"",
-			false,
 			nil,
 			io.Discard,
 			errOut,
@@ -126,9 +124,6 @@ func TestPrintStopping(t *testing.T) {
 			"name",
 			compose,
 			false,
-			time.Now(),
-			"",
-			false,
 			nil,
 			io.Discard,
 			errOut,
@@ -142,93 +137,80 @@ func TestPrintStopping(t *testing.T) {
 	}
 }
 
-func TestGetSinceTime(t *testing.T) {
-	t1, _ := time.Parse(time.RFC3339, "2025-01-07T21:02:08Z")
-	t2 := t1.Add(5 * time.Second)
-	t3 := t1.Add(10 * time.Second)
+func TestConsumeStreamTail(t *testing.T) {
+	logLines := []byte(`2023-02-13T21:20:30.000000001Z line 1
+2023-02-13T21:20:30.000000002Z line 2
+2023-02-13T21:20:31.000000001Z line 3
+2023-02-13T21:20:31.000000002Z line 4`)
+	tmpl := template.Must(template.New("").Parse(`{{printf "%s (%s)\n" .Message .ContainerName}}`))
+
 	tests := []struct {
-		desc        string
-		startTime   time.Time
-		finishTime  string
-		optionsTime time.Time
-		seen        bool
-		expected    time.Time
+		name      string
+		resumeReq *ResumeRequest
+		expected  []byte
 	}{
 		{
-			desc:        "invalid finish, seen",
-			startTime:   t1,
-			finishTime:  "",
-			optionsTime: t2,
-			seen:        true,
-			expected:    t2,
+			name: "normal",
+			expected: []byte(`line 1 (container1)
+line 2 (container1)
+line 3 (container1)
+line 4 (container1)
+`),
 		},
 		{
-			desc:        "finish earlier than option, seen",
-			startTime:   t3,
-			finishTime:  t1.Format(time.RFC3339),
-			optionsTime: t2,
-			seen:        true,
-			expected:    t1,
+			name:      "ResumeRequest LinesToSkip=1",
+			resumeReq: &ResumeRequest{Timestamp: "2023-02-13T21:20:30Z", LinesToSkip: 1},
+			expected: []byte(`line 2 (container1)
+line 3 (container1)
+line 4 (container1)
+`),
 		},
 		{
-			desc:        "start earlier than option, seen",
-			startTime:   t1,
-			finishTime:  t3.Format(time.RFC3339),
-			optionsTime: t2,
-			seen:        true,
-			expected:    t2,
+			name:      "ResumeRequest LinesToSkip=2",
+			resumeReq: &ResumeRequest{Timestamp: "2023-02-13T21:20:30Z", LinesToSkip: 2},
+			expected: []byte(`line 3 (container1)
+line 4 (container1)
+`),
 		},
 		{
-			desc:        "option later than both, seen",
-			startTime:   t2,
-			finishTime:  t1.Format(time.RFC3339),
-			optionsTime: t3,
-			seen:        true,
-			expected:    t3,
+			name:      "ResumeRequest LinesToSkip=3 (exceed)",
+			resumeReq: &ResumeRequest{Timestamp: "2023-02-13T21:20:30Z", LinesToSkip: 3},
+			expected: []byte(`line 3 (container1)
+line 4 (container1)
+`),
 		},
 		{
-			desc:        "truncated to start, seen",
-			startTime:   t2,
-			finishTime:  t3.Format(time.RFC3339),
-			optionsTime: t1,
-			seen:        true,
-			expected:    t2,
-		},
-		{
-			desc:        "truncated to finish, seen",
-			startTime:   t3,
-			finishTime:  t2.Format(time.RFC3339),
-			optionsTime: t1,
-			seen:        true,
-			expected:    t2,
-		},
-		{
-			desc:        "start earlier than option, not seen",
-			startTime:   t1,
-			finishTime:  t2.Format(time.RFC3339),
-			optionsTime: t3,
-			seen:        false,
-			expected:    t3,
-		},
-		{
-			desc:        "start later than option, not seen",
-			startTime:   t2,
-			finishTime:  t3.Format(time.RFC3339),
-			optionsTime: t1,
-			seen:        false,
-			expected:    t1,
+			name:      "ResumeRequest does not match",
+			resumeReq: &ResumeRequest{Timestamp: "2222-22-22T21:20:30Z", LinesToSkip: 3},
+			expected: []byte(`line 1 (container1)
+line 2 (container1)
+line 3 (container1)
+line 4 (container1)
+`),
 		},
 	}
-	for _, tt := range tests {
-		t.Run(tt.desc, func(t *testing.T) {
-			options := &TailOptions{
-				DockerSinceTime: tt.optionsTime,
-			}
-			tail := NewDockerTail(nil, "", "", "", false, tt.startTime, tt.finishTime, tt.seen, nil, io.Discard, io.Discard, options)
 
-			actual := tail.getSinceTime()
-			if tt.expected != actual {
-				t.Errorf("expected %v, but actual %v", tt.expected, actual)
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := new(bytes.Buffer)
+			tail := NewDockerTail(
+				nil,
+				"id",
+				"container1",
+				"",
+				true,
+				tmpl,
+				out,
+				out,
+				&TailOptions{},
+			)
+			tail.resumeRequest = tt.resumeReq
+			if err := tail.consumeStream(context.TODO(), bytes.NewReader(logLines)); err != nil {
+				t.Fatalf("%d: unexpected err %v", i, err)
+			}
+
+			if !bytes.Equal(tt.expected, out.Bytes()) {
+				t.Errorf("%d: expected %s, but actual %s", i, tt.expected, out)
 			}
 		})
 	}

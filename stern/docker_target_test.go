@@ -223,10 +223,9 @@ func TestTargetFilterShouldAdd(t *testing.T) {
 	genTarget := func(id, name, timestring string, seen bool) DockerTarget {
 		t, _ := time.Parse(time.RFC3339, timestring)
 		return DockerTarget{
-			Id:             id,
-			Name:           name,
-			StartedAt:      t,
-			SeenPreviously: seen,
+			Id:        id,
+			Name:      name,
+			StartedAt: t,
 		}
 	}
 	tests := []struct {

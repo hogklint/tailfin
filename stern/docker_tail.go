@@ -9,10 +9,10 @@ import (
 	"io"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/fatih/color"
 	"k8s.io/klog/v2"
 )
@@ -23,16 +23,18 @@ type DockerTail struct {
 	ContainerName  string
 	ComposeProject string
 	Tty            bool
-	StartedAt      time.Time
-	FinishedAt     string
-	SeenPreviously bool
 	composeColor   *color.Color
 	containerColor *color.Color
 	Options        *TailOptions
 	tmpl           *template.Template
 	closed         chan struct{}
-	out            io.Writer
-	errOut         io.Writer
+	last           struct {
+		timestamp string // RFC3339 timestamp (not RFC3339Nano)
+		lines     int    // the number of lines seen during this timestamp
+	}
+	resumeRequest *ResumeRequest
+	out           io.Writer
+	errOut        io.Writer
 }
 
 func NewDockerTail(
@@ -41,9 +43,6 @@ func NewDockerTail(
 	containerName string,
 	composeProject string,
 	tty bool,
-	startedAt time.Time,
-	finishedAt string,
-	seenPreviously bool,
 	tmpl *template.Template,
 	out, errOut io.Writer,
 	options *TailOptions,
@@ -56,9 +55,6 @@ func NewDockerTail(
 		ContainerName:  containerName,
 		ComposeProject: composeProject,
 		Tty:            tty,
-		StartedAt:      startedAt,
-		FinishedAt:     finishedAt,
-		SeenPreviously: seenPreviously,
 		Options:        options,
 		composeColor:   composeColor,
 		containerColor: containerColor,
@@ -86,10 +82,27 @@ func (t *DockerTail) Start(ctx context.Context) error {
 
 	t.printStarting()
 
-	err := t.consumeRequest(ctx)
+	logs, err := t.client.ContainerLogs(
+		ctx,
+		t.ContainerId,
+		container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     t.Options.Follow,
+			Timestamps: true,
+			Since:      t.Options.DockerSinceTime,
+			Tail:       t.Options.DockerTailLines,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	defer logs.Close()
+
+	err = t.consumeStream(ctx, logs)
 	if err != nil {
 		klog.V(7).ErrorS(err, "Error fetching logs for container", "name", t.ContainerName, "id", t.ContainerId)
-		if errors.Is(err, context.Canceled) {
+		if errors.Is(err, context.Canceled) || errdefs.IsConflict(err) {
 			return nil
 		}
 	}
@@ -102,44 +115,14 @@ func (t *DockerTail) Close() {
 	close(t.closed)
 }
 
-// Since log streams end when containers terminate tailfin must keep track of when a container has been previously
-// tailed and use a "since"-time from last finish/start. Otherwise it will include logs from previous starts thus
-// printing logs already printed.
-func (t *DockerTail) getSinceTime() time.Time {
-	if !t.SeenPreviously ||
-		t.StartedAt.Before(t.Options.DockerSinceTime) {
-		return t.Options.DockerSinceTime
-	}
-
-	// If there's no finish time it should mean the container only started once so it's safe to use the options time.
-	finished, err := time.Parse(time.RFC3339, t.FinishedAt)
-	if err != nil {
-		return t.Options.DockerSinceTime
-	} else if finished.Before(t.StartedAt) {
-		// Sometimes early logs are missing if StartedAt is used
-		return finished
-	}
-	return t.StartedAt
+func (t *DockerTail) Resume(ctx context.Context, resumeRequest *ResumeRequest) error {
+	t.resumeRequest = resumeRequest
+	t.Options.DockerSinceTime = resumeRequest.Timestamp
+	t.Options.DockerTailLines = "-1"
+	return t.Start(ctx)
 }
 
-func (t *DockerTail) consumeRequest(ctx context.Context) error {
-	logs, err := t.client.ContainerLogs(
-		ctx,
-		t.ContainerId,
-		container.LogsOptions{
-			ShowStdout: true,
-			ShowStderr: true,
-			Follow:     t.Options.Follow,
-			Timestamps: true,
-			Since:      t.getSinceTime().Format(time.RFC3339),
-			Tail:       t.Options.DockerTailLines,
-		},
-	)
-	if err != nil {
-		return err
-	}
-	defer logs.Close()
-
+func (t *DockerTail) consumeStream(ctx context.Context, logs io.Reader) error {
 	r := bufio.NewReader(logs)
 	for {
 		line, err := r.ReadBytes('\n')
@@ -161,6 +144,13 @@ func (t *DockerTail) consumeLine(line string) {
 		t.Print(fmt.Sprintf("[%v] %s", err, line))
 		return
 	}
+
+	rfc3339 := removeSubsecond(rfc3339Nano)
+	t.rememberLastTimestamp(rfc3339)
+	if t.resumeRequest.shouldSkip(rfc3339) {
+		return
+	}
+	t.resumeRequest = nil
 
 	if t.Options.IsExclude(content) || !t.Options.IsInclude(content) {
 		return
@@ -236,6 +226,21 @@ func trimLeadingChars(line string, tty bool) string {
 		klog.V(7).InfoS("Invalid log line format received", "line", line)
 		return ""
 	}
-
 	return line[8:]
+}
+
+func (t *DockerTail) rememberLastTimestamp(timestamp string) {
+	if t.last.timestamp == timestamp {
+		t.last.lines++
+		return
+	}
+	t.last.timestamp = timestamp
+	t.last.lines = 1
+}
+
+func (t *DockerTail) GetResumeRequest() *ResumeRequest {
+	if t.last.timestamp == "" {
+		return nil
+	}
+	return &ResumeRequest{Timestamp: t.last.timestamp, LinesToSkip: t.last.lines}
 }
