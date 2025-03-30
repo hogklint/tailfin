@@ -19,7 +19,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			Timestamps:      config.Timestamps,
 			TimestampFormat: config.TimestampFormat,
 			Location:        config.Location,
-			DockerSinceTime: time.Now().Add(-config.Since),
+			DockerSinceTime: time.Now().Add(-config.Since).Format(time.RFC3339),
 			Exclude:         config.Exclude,
 			Include:         config.Include,
 			Highlight:       config.Highlight,
@@ -35,9 +35,6 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			target.Name,
 			target.ComposeProject,
 			target.Tty,
-			target.StartedAt,
-			target.FinishedAt,
-			target.SeenPreviously,
 			config.Template,
 			config.Out,
 			config.ErrOut,
@@ -50,12 +47,13 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		return tail.Start()
 	}
 
-	filter := newDockerTargetFilter(dockerTargetFilterConfig{
-		containerFilter:        config.ContainerQuery,
-		containerExcludeFilter: config.ExcludeContainerQuery,
-		composeProjectFilter:   config.ComposeProjectQuery,
-		imageFilter:            config.ImageQuery,
-	},
+	filter := newDockerTargetFilter(
+		dockerTargetFilterConfig{
+			containerFilter:        config.ContainerQuery,
+			containerExcludeFilter: config.ExcludeContainerQuery,
+			composeProjectFilter:   config.ComposeProjectQuery,
+			imageFilter:            config.ImageQuery,
+		},
 		max(config.MaxLogRequests*2, 100),
 	)
 
@@ -91,7 +89,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 
 	tailTarget := func(target *DockerTarget) {
 		limiter := rate.NewLimiter(rate.Every(time.Second*20), 2)
-		var resumeRequest *ResumeRequest
+		resumeRequest := target.ResumeRequest
 		for {
 			if err := limiter.Wait(ctx); err != nil {
 				fmt.Fprintf(config.ErrOut, "failed to retry: %v\n", err)
@@ -107,9 +105,11 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			tail.Close()
 
 			if err == nil {
+				filter.setResumeRequest(target.Id, tail.GetResumeRequest())
 				return
 			}
 			if !filter.isActive(target) {
+				filter.setResumeRequest(target.Id, tail.GetResumeRequest())
 				fmt.Fprintf(config.ErrOut, "failed to tail: %v\n", err)
 				return
 			}

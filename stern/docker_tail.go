@@ -9,7 +9,6 @@ import (
 	"io"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
@@ -24,9 +23,6 @@ type DockerTail struct {
 	ContainerName  string
 	ComposeProject string
 	Tty            bool
-	StartedAt      time.Time
-	FinishedAt     string
-	SeenPreviously bool
 	composeColor   *color.Color
 	containerColor *color.Color
 	Options        *TailOptions
@@ -47,9 +43,6 @@ func NewDockerTail(
 	containerName string,
 	composeProject string,
 	tty bool,
-	startedAt time.Time,
-	finishedAt string,
-	seenPreviously bool,
 	tmpl *template.Template,
 	out, errOut io.Writer,
 	options *TailOptions,
@@ -62,9 +55,6 @@ func NewDockerTail(
 		ContainerName:  containerName,
 		ComposeProject: composeProject,
 		Tty:            tty,
-		StartedAt:      startedAt,
-		FinishedAt:     finishedAt,
-		SeenPreviously: seenPreviously,
 		Options:        options,
 		composeColor:   composeColor,
 		containerColor: containerColor,
@@ -108,36 +98,10 @@ func (t *DockerTail) Close() {
 	close(t.closed)
 }
 
-// Since log streams end when containers terminate tailfin must keep track of when a container has been previously
-// tailed and use a "since"-time from last finish/start. Otherwise it will include logs from previous starts thus
-// printing logs already printed.
-func (t *DockerTail) getSinceTime() time.Time {
-	if !t.SeenPreviously ||
-		t.StartedAt.Before(t.Options.DockerSinceTime) {
-		return t.Options.DockerSinceTime
-	}
-
-	// If there's no finish time it should mean the container only started once so it's safe to use the options time.
-	finished, err := time.Parse(time.RFC3339, t.FinishedAt)
-	if err != nil {
-		return t.Options.DockerSinceTime
-	} else if finished.Before(t.StartedAt) {
-		// Sometimes early logs are missing if StartedAt is used
-		return finished
-	}
-	return t.StartedAt
-}
-
 func (t *DockerTail) Resume(ctx context.Context, resumeRequest *ResumeRequest) error {
-	sinceTime, err := time.Parse(time.RFC3339, resumeRequest.Timestamp)
-	if err != nil {
-		fmt.Fprintf(t.errOut, "failed to resume: %s, fallback to Start()\n", err)
-		return t.Start(ctx)
-	}
 	t.resumeRequest = resumeRequest
-	t.Options.DockerSinceTime = sinceTime
-	t.Options.SinceSeconds = nil
-	t.Options.TailLines = nil
+	t.Options.DockerSinceTime = resumeRequest.Timestamp
+	t.Options.DockerTailLines = "-1"
 	return t.Start(ctx)
 }
 
@@ -150,7 +114,7 @@ func (t *DockerTail) consumeRequest(ctx context.Context) error {
 			ShowStderr: true,
 			Follow:     t.Options.Follow,
 			Timestamps: true,
-			Since:      t.getSinceTime().Format(time.RFC3339),
+			Since:      t.Options.DockerSinceTime,
 			Tail:       t.Options.DockerTailLines,
 		},
 	)
@@ -186,6 +150,7 @@ func (t *DockerTail) consumeLine(line string) {
 	if t.resumeRequest.shouldSkip(rfc3339) {
 		return
 	}
+	t.resumeRequest = nil
 
 	if t.Options.IsExclude(content) || !t.Options.IsInclude(content) {
 		return

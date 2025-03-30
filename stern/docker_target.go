@@ -17,8 +17,7 @@ type DockerTarget struct {
 	ComposeProject string
 	Tty            bool
 	StartedAt      time.Time
-	FinishedAt     string
-	SeenPreviously bool
+	ResumeRequest  *ResumeRequest
 }
 
 type dockerTargetFilterConfig struct {
@@ -31,12 +30,12 @@ type dockerTargetFilterConfig struct {
 type dockerTargetFilter struct {
 	config           dockerTargetFilterConfig
 	activeContainers map[string]time.Time
-	seenContainers   *lru.Cache[string, bool]
+	seenContainers   *lru.Cache[string, *ResumeRequest]
 	mu               sync.RWMutex
 }
 
 func newDockerTargetFilter(filterConfig dockerTargetFilterConfig, lruCacheSize int) *dockerTargetFilter {
-	lru, err := lru.New[string, bool](lruCacheSize)
+	lru, err := lru.New[string, *ResumeRequest](lruCacheSize)
 	if err != nil {
 		panic(err)
 	}
@@ -75,14 +74,17 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		return
 	}
 
+	var resumeRequest *ResumeRequest
+	if rr, ok := f.seenContainers.Get(container.ID); ok {
+		resumeRequest = rr
+	}
 	target := &DockerTarget{
 		Id:             container.ID,
 		Name:           containerName,
 		ComposeProject: composeProject,
 		Tty:            container.Config.Tty,
 		StartedAt:      startedAt,
-		FinishedAt:     container.State.FinishedAt,
-		SeenPreviously: f.seenContainers.Contains(container.ID),
+		ResumeRequest:  resumeRequest,
 	}
 
 	if f.shouldAdd(target) {
@@ -105,7 +107,6 @@ func (f *dockerTargetFilter) shouldAdd(t *DockerTarget) bool {
 		return false
 	}
 
-	f.seenContainers.Add(t.Id, true)
 	return true
 }
 
@@ -163,12 +164,16 @@ func (f *dockerTargetFilter) matchingImageFilter(containerImage string) bool {
 }
 
 func (f *dockerTargetFilter) inactive(containerId string) {
-	f.seenContainers.Add(containerId, true)
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
 	klog.V(7).InfoS("Inactive container", "target", containerId)
 	delete(f.activeContainers, containerId)
+}
+
+func (f *dockerTargetFilter) setResumeRequest(containerId string, resume *ResumeRequest) {
+	klog.V(7).InfoS("Storing resume request", "target", containerId, "resume", resume)
+	f.seenContainers.Add(containerId, resume)
 }
 
 func (f *dockerTargetFilter) forget(containerId string) {

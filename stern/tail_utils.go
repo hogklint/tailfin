@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/fatih/color"
 )
@@ -35,7 +36,7 @@ type TailOptions struct {
 	TimestampFormat string
 	Location        *time.Location
 
-	DockerSinceTime time.Time
+	DockerSinceTime string
 	Exclude         []*regexp.Regexp
 	Include         []*regexp.Regexp
 	Highlight       []*regexp.Regexp
@@ -118,4 +119,45 @@ func splitLogLine(line string) (timestamp string, content string, err error) {
 		return "", "", errors.New("missing timestamp")
 	}
 	return line[:idx], line[idx+1:], nil
+}
+
+// removeSubsecond removes the subsecond of the timestamp.
+// It converts RFC3339Nano to RFC3339 fast.
+func removeSubsecond(timestamp string) string {
+	dot := strings.IndexRune(timestamp, '.')
+	if dot == -1 {
+		return timestamp
+	}
+	var last int
+	for i := dot; i < len(timestamp); i++ {
+		if unicode.IsDigit(rune(timestamp[i])) {
+			last = i
+		}
+	}
+	if last == 0 {
+		return timestamp
+	}
+	return timestamp[:dot] + timestamp[last+1:]
+}
+
+type ResumeRequest struct {
+	Timestamp   string // RFC3339 timestamp (not RFC3339Nano)
+	LinesToSkip int    // the number of lines to skip during this timestamp
+}
+
+func (r *ResumeRequest) shouldSkip(timestamp string) bool {
+	if r == nil {
+		return false
+	}
+	if r.Timestamp == "" {
+		return false
+	}
+	if r.Timestamp != timestamp {
+		return false
+	}
+	if r.LinesToSkip <= 0 {
+		return false
+	}
+	r.LinesToSkip--
+	return true
 }
