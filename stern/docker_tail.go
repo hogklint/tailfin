@@ -82,7 +82,24 @@ func (t *DockerTail) Start(ctx context.Context) error {
 
 	t.printStarting()
 
-	err := t.consumeRequest(ctx)
+	logs, err := t.client.ContainerLogs(
+		ctx,
+		t.ContainerId,
+		container.LogsOptions{
+			ShowStdout: true,
+			ShowStderr: true,
+			Follow:     t.Options.Follow,
+			Timestamps: true,
+			Since:      t.Options.DockerSinceTime,
+			Tail:       t.Options.DockerTailLines,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	defer logs.Close()
+
+	err = t.consumeStream(ctx, logs)
 	if err != nil {
 		klog.V(7).ErrorS(err, "Error fetching logs for container", "name", t.ContainerName, "id", t.ContainerId)
 		if errors.Is(err, context.Canceled) || errdefs.IsConflict(err) {
@@ -105,24 +122,7 @@ func (t *DockerTail) Resume(ctx context.Context, resumeRequest *ResumeRequest) e
 	return t.Start(ctx)
 }
 
-func (t *DockerTail) consumeRequest(ctx context.Context) error {
-	logs, err := t.client.ContainerLogs(
-		ctx,
-		t.ContainerId,
-		container.LogsOptions{
-			ShowStdout: true,
-			ShowStderr: true,
-			Follow:     t.Options.Follow,
-			Timestamps: true,
-			Since:      t.Options.DockerSinceTime,
-			Tail:       t.Options.DockerTailLines,
-		},
-	)
-	if err != nil {
-		return err
-	}
-	defer logs.Close()
-
+func (t *DockerTail) consumeStream(ctx context.Context, logs io.Reader) error {
 	r := bufio.NewReader(logs)
 	for {
 		line, err := r.ReadBytes('\n')
