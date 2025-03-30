@@ -10,7 +10,7 @@ import (
 
 	dockerclient "github.com/docker/docker/client"
 	"golang.org/x/sync/errgroup"
-	"k8s.io/klog/v2"
+	"golang.org/x/time/rate"
 )
 
 func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerConfig) error {
@@ -59,17 +59,6 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		max(config.MaxLogRequests*2, 100),
 	)
 
-	tailTarget := func(target *DockerTarget) error {
-		tail := newTail(target)
-		defer tail.Close()
-		err := tail.Start(ctx)
-		if err != nil && filter.isActive(target) {
-			fmt.Fprintf(config.ErrOut, "failed to tail %s: %v\n", target.Name, err)
-			return err
-		}
-		return nil
-	}
-
 	if !config.Follow {
 		containers, err := FilteredContainerGenerator(ctx, config, client, filter)
 		if err != nil {
@@ -81,7 +70,14 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		for target := range containers {
 			target := target
 			eg.Go(func() error {
-				return tailTarget(target)
+				tail := newTail(target)
+				defer tail.Close()
+				err := tail.Start(ctx)
+				if err != nil && filter.isActive(target) {
+					fmt.Fprintf(config.ErrOut, "failed to tail %s: %v\n", target.Name, err)
+					return err
+				}
+				return nil
 			})
 		}
 		return eg.Wait()
@@ -91,6 +87,37 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 	if err != nil {
 		fmt.Fprintf(config.ErrOut, "failed to list containers: %v\n", err)
 		return err
+	}
+
+	tailTarget := func(target *DockerTarget) {
+		limiter := rate.NewLimiter(rate.Every(time.Second*20), 2)
+		var resumeRequest *ResumeRequest
+		for {
+			if err := limiter.Wait(ctx); err != nil {
+				fmt.Fprintf(config.ErrOut, "failed to retry: %v\n", err)
+				return
+			}
+			tail := newTail(target)
+			var err error
+			if resumeRequest == nil {
+				err = tail.Start(ctx)
+			} else {
+				err = tail.Resume(ctx, resumeRequest)
+			}
+			tail.Close()
+
+			if err == nil {
+				return
+			}
+			if !filter.isActive(target) {
+				fmt.Fprintf(config.ErrOut, "failed to tail: %v\n", err)
+				return
+			}
+			fmt.Fprintf(config.ErrOut, "failed to tail: %v, will retry\n", err)
+			if resumeReq := tail.GetResumeRequest(); resumeReq != nil {
+				resumeRequest = resumeReq
+			}
+		}
 	}
 
 	var numRequests atomic.Int64
@@ -103,10 +130,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 				config.MaxLogRequests)
 		}
 		go func() {
-			err := tailTarget(target)
-			if err != nil {
-				klog.V(7).ErrorS(err, "Error tailing container", "id", target.Id, "name", target.Name)
-			}
+			tailTarget(target)
 			numRequests.Add(-1)
 		}()
 	}

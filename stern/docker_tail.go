@@ -13,6 +13,7 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
+	"github.com/docker/docker/errdefs"
 	"github.com/fatih/color"
 	"k8s.io/klog/v2"
 )
@@ -31,8 +32,13 @@ type DockerTail struct {
 	Options        *TailOptions
 	tmpl           *template.Template
 	closed         chan struct{}
-	out            io.Writer
-	errOut         io.Writer
+	last           struct {
+		timestamp string // RFC3339 timestamp (not RFC3339Nano)
+		lines     int    // the number of lines seen during this timestamp
+	}
+	resumeRequest *ResumeRequest
+	out           io.Writer
+	errOut        io.Writer
 }
 
 func NewDockerTail(
@@ -89,7 +95,7 @@ func (t *DockerTail) Start(ctx context.Context) error {
 	err := t.consumeRequest(ctx)
 	if err != nil {
 		klog.V(7).ErrorS(err, "Error fetching logs for container", "name", t.ContainerName, "id", t.ContainerId)
-		if errors.Is(err, context.Canceled) {
+		if errors.Is(err, context.Canceled) || errdefs.IsConflict(err) {
 			return nil
 		}
 	}
@@ -120,6 +126,19 @@ func (t *DockerTail) getSinceTime() time.Time {
 		return finished
 	}
 	return t.StartedAt
+}
+
+func (t *DockerTail) Resume(ctx context.Context, resumeRequest *ResumeRequest) error {
+	sinceTime, err := time.Parse(time.RFC3339, resumeRequest.Timestamp)
+	if err != nil {
+		fmt.Fprintf(t.errOut, "failed to resume: %s, fallback to Start()\n", err)
+		return t.Start(ctx)
+	}
+	t.resumeRequest = resumeRequest
+	t.Options.DockerSinceTime = sinceTime
+	t.Options.SinceSeconds = nil
+	t.Options.TailLines = nil
+	return t.Start(ctx)
 }
 
 func (t *DockerTail) consumeRequest(ctx context.Context) error {
@@ -159,6 +178,12 @@ func (t *DockerTail) consumeLine(line string) {
 	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(line, t.Tty))
 	if err != nil {
 		t.Print(fmt.Sprintf("[%v] %s", err, line))
+		return
+	}
+
+	rfc3339 := removeSubsecond(rfc3339Nano)
+	t.rememberLastTimestamp(rfc3339)
+	if t.resumeRequest.shouldSkip(rfc3339) {
 		return
 	}
 
@@ -236,6 +261,21 @@ func trimLeadingChars(line string, tty bool) string {
 		klog.V(7).InfoS("Invalid log line format received", "line", line)
 		return ""
 	}
-
 	return line[8:]
+}
+
+func (t *DockerTail) rememberLastTimestamp(timestamp string) {
+	if t.last.timestamp == timestamp {
+		t.last.lines++
+		return
+	}
+	t.last.timestamp = timestamp
+	t.last.lines = 1
+}
+
+func (t *DockerTail) GetResumeRequest() *ResumeRequest {
+	if t.last.timestamp == "" {
+		return nil
+	}
+	return &ResumeRequest{Timestamp: t.last.timestamp, LinesToSkip: t.last.lines}
 }
