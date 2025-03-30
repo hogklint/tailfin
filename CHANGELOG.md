@@ -1,3 +1,10 @@
+# v0.1.1
+
+## Changes
+* Updated json output to less verbose names
+* Improve resuming logs on container restart
+  * Using the container stop time sometimes includes already printed logs
+
 # v0.1.0
 
 ## Changes
