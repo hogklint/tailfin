@@ -16,7 +16,6 @@ type DockerTarget struct {
 	Name           string
 	ComposeProject string
 	Tty            bool
-	StartedAt      time.Time
 	ResumeRequest  *ResumeRequest
 }
 
@@ -83,25 +82,24 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		Name:           containerName,
 		ComposeProject: composeProject,
 		Tty:            container.Config.Tty,
-		StartedAt:      startedAt,
 		ResumeRequest:  resumeRequest,
 	}
 
-	if f.shouldAdd(target) {
+	if f.shouldAdd(target, startedAt) {
 		visitor(target)
 	}
 }
 
-func (f *dockerTargetFilter) shouldAdd(t *DockerTarget) bool {
+func (f *dockerTargetFilter) shouldAdd(t *DockerTarget, startedAt time.Time) bool {
 	f.mu.Lock()
-	startedAt, found := f.activeContainers[t.Id]
-	f.activeContainers[t.Id] = t.StartedAt
+	activeStartedAt, found := f.activeContainers[t.Id]
+	f.activeContainers[t.Id] = startedAt
 	f.mu.Unlock()
 
 	// Listed already terminated containers will not emit a Die event so they will stay in the activeContainers map. When
 	// restarted it should still be added if the start time is different. If the start time is the same it means the
 	// container was listed as well as received in a start event i.e. should not be added twice.
-	if found && startedAt == t.StartedAt {
+	if found && activeStartedAt == startedAt {
 		klog.V(7).InfoS("Container ID existed before observation",
 			"id", t.Id, "name", t.Name)
 		return false

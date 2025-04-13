@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"regexp"
 	"testing"
-	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -12,7 +11,6 @@ import (
 
 func TestTargetFilter(t *testing.T) {
 	validTimestamp := "2000-01-01T00:00:00+00:00"
-	validTime, _ := time.Parse(time.RFC3339, validTimestamp)
 	createContainer := func(compose, id, name, image string) types.ContainerJSON {
 		var labels map[string]string
 		jsonName := name
@@ -60,7 +58,6 @@ func TestTargetFilter(t *testing.T) {
 			ComposeProject: composeProject,
 			Id:             id,
 			Name:           name,
-			StartedAt:      validTime,
 		}
 	}
 
@@ -221,11 +218,9 @@ func TestTargetFilterShouldAdd(t *testing.T) {
 		}
 	}
 	genTarget := func(id, name, timestring string, seen bool) DockerTarget {
-		t, _ := time.Parse(time.RFC3339, timestring)
 		return DockerTarget{
-			Id:        id,
-			Name:      name,
-			StartedAt: t,
+			Id:   id,
+			Name: name,
 		}
 	}
 	tests := []struct {
