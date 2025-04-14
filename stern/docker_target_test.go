@@ -54,10 +54,15 @@ func TestTargetFilter(t *testing.T) {
 	}
 
 	genTarget := func(composeProject, id, name string) DockerTarget {
+		containerName := name + "-0"
+		if composeProject == "" {
+			containerName = name
+		}
 		return DockerTarget{
 			ComposeProject: composeProject,
 			Id:             id,
-			Name:           name,
+			Name:           containerName,
+			ServiceName:    name,
 		}
 	}
 
@@ -219,8 +224,9 @@ func TestTargetFilterShouldAdd(t *testing.T) {
 	}
 	genTarget := func(id, name, timestring string, seen bool) DockerTarget {
 		return DockerTarget{
-			Id:   id,
-			Name: name,
+			Id:          id,
+			Name:        name,
+			ServiceName: name,
 		}
 	}
 	tests := []struct {

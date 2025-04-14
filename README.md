@@ -39,9 +39,8 @@ The `container query` is a regular expression of the container name; you could p
  `--color`                   | `auto`                          | Force set color output. 'auto':  colorize if tty attached, 'always': always colorize, 'never': never colorize.
  `--completion`              |                                 | Output tailfin command-line completion code for the specified shell. Can be 'bash', 'zsh' or 'fish'.
  `--compose`                 | `[]`                            | Compose project name to match (regular expression)
- `--compose-colors`          |                                 | Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., "91,92,93,94,95,96".
  `--config`                  | `~/.config/tailfin/config.yaml` | Path to the tailfin config file
- `--container-colors`        |                                 | Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.
+ `--container-colors`        |                                 | Specifies the colors used to highlight container names. Use the same format as --namespace-colors. Defaults to the values of --namespace-colors if omitted, and must match its length.
  `--exclude`, `-e`           | `[]`                            | Log lines to exclude. (regular expression)
  `--exclude-container`, `-E` | `[]`                            | Container name to exclude. (regular expression)
  `--highlight`, `-H`         | `[]`                            | Log lines to highlight. (regular expression)
@@ -49,6 +48,7 @@ The `container query` is a regular expression of the container name; you could p
  `--include`, `-i`           | `[]`                            | Log lines to include. (regular expression)
  `--label`, `-l`             | `[]`                            | Label query to filter on. One key or `key=value` per flag instance.
  `--max-log-requests`        | `-1`                            | Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow
+ `--namespace-colors`        |                                 | Specifies the colors used to highlight namespace (compose project). Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., "91,92,93,94,95,96".
  `--no-follow`               | `false`                         | Exit when all logs have been shown.
  `--only-log-lines`          | `false`                         | Print only log lines
  `--output`, `-o`            | `default`                       | Specify predefined template. Currently support: [default, raw, json, extjson, ppextjson]
@@ -95,11 +95,14 @@ It accepts a custom template through the `--template` flag, which will be
 compiled to a Go template and then used for every log message. This Go template
 will receive the following struct:
 
-| property        | type   | description                                    |
-|-----------------|--------|------------------------------------------------|
-| `Message`       | string | The log message itself                         |
-| `ComposeProject`| string | The name of the docker compose project, if any |
-| `ContainerName` | string | The name of the container                      |
+| property         | type   | Docker         | Compose                   |
+|------------------|--------|----------------|---------------------------|
+| `Message`        | string | Log message    | Log message               |
+| `ContainerName`  | string | Container name | Container name            |
+| `ServiceName`    | string | Container name | Service name              |
+| `Namespace`      | string | -              | Compose project name      |
+| `ContainerNumber`| string | -              | Container number          |
+<!-- TODO:Labels --->
 
 The following functions are available within the template (besides the [builtin
 functions](https://golang.org/pkg/text/template/#hdr-Functions)):
@@ -107,7 +110,7 @@ functions](https://golang.org/pkg/text/template/#hdr-Functions)):
 | func            | arguments             | description                                                                       |
 |-----------------|-----------------------|-----------------------------------------------------------------------------------|
 | `json`          | `object`              | Marshal the object and output it as a json text                                   |
-| `color`         | `color.Color, string` | Wrap the text in color (.ContainerColor and .ComposeColor provided)               |
+| `color`         | `color.Color, string` | Wrap the text in color (.ContainerColor and .NamespaceColor provided)             |
 | `parseJSON`     | `string`              | Parse string as JSON                                                              |
 | `tryParseJSON`  | `string`              | Attempt to parse string as JSON, return nil on failure                            |
 | `extractJSONParts`    | `string, ...string` | Parse string as JSON and concatenate the given keys.                          |
@@ -141,25 +144,28 @@ The behavior and the default are different depending on the presence of the `--n
 | not specified | 50      | exits with an error when if it reaches the concurrent limit |
 
 ### Customize highlight colors
-You can configure highlight colors for compose projects and containers in [the config file](#config-file) using a comma-separated list of [SGR (Select Graphic Rendition) sequences](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters), as shown below. If you omit `container-colors`, the compose project colors will be used as container colors as well.
+You can configure highlight colors for namespaces (compose project) and containers in [the config file](#config-file)
+using a comma-separated list of [SGR (Select Graphic Rendition)
+sequences](https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters), as shown
+below. If you omit `container-colors`, the namespace colors will be used as container colors as well.
 
 ```yaml
 # Green, Yellow, Blue, Magenta, Cyan, White
-compose-colors: "32,33,34,35,36,37"
+namespace-colors: "32,33,34,35,36,37"
 
 # Colors with underline (4)
-# If empty, the compose colors will be used as container colors
+# If empty, the namespace will be used as container colors
 container-colors: "32;4,33;4,34;4,35;4,36;4,37;4"
 ```
 
 This format enables the use of various attributes, such as underline, background colors, 8-bit colors, and 24-bit colors, if your terminal supports them.
 
-The equivalent flags `--compose-colors` and `--container-colors` are also available. The following command applies [24-bit colors](https://en.wikipedia.org/wiki/ANSI_escape_code#24-bit) using the `--compose-colors` flag.
+The equivalent flags `--namespace-colors` and `--container-colors` are also available. The following command applies [24-bit colors](https://en.wikipedia.org/wiki/ANSI_escape_code#24-bit) using the `--namespace-colors` flag.
 
 ```bash
 # Monokai theme
-composeColors="38;2;255;97;136,38;2;169;220;118,38;2;255;216;102,38;2;120;220;232,38;2;171;157;242"
-tailfin --compose-colors "$composeColors" app
+namespaceColor="38;2;255;97;136,38;2;169;220;118,38;2;255;216;102,38;2;120;220;232,38;2;171;157;242"
+tailfin --namespace-colors "$namespaceColor" app
 ```
 
 ## Examples:
@@ -217,25 +223,25 @@ tailfin backend -o raw
 Output using a custom template:
 
 ```
-tailfin --template '{{printf "%s (%s/%s)\n" .Message .ComposeProject .ContainerName}}' backend
+tailfin --template '{{printf "%s (%s/%s)\n" .Message .Namespace .ServiceName}}' backend
 ```
 
 Output using a custom template with tailfin-provided colors:
 
 ```
-tailfin --template '{{.Message}} ({{color .ComposeColor .ComposeProject}}/{{color .ContainerColor .ContainerName}}){{"\n"}}' backend
+tailfin --template '{{.Message}} ({{color .NamespaceColor .Namespace}}/{{color .ContainerColor .ServiceName}}){{"\n"}}' backend
 ```
 
 Output using a custom template with `parseJSON`:
 
 ```
-tailfin --template='{{.ComposeProject}}/{{.ContainerName}} {{with $d := .Message | parseJSON}}[{{$d.level}}] {{$d.message}}{{end}}{{"\n"}}' backend
+tailfin --template='{{.Namespace}}/{{.ServiceName}} {{with $d := .Message | parseJSON}}[{{$d.level}}] {{$d.message}}{{end}}{{"\n"}}' backend
 ```
 
 Output using a custom template that tries to parse JSON or fallbacks to raw format:
 
 ```
-tailfin --template='{{.ComposeProject}}/{{.ContainerName}} {{ with $msg := .Message | tryParseJSON }}[{{ colorGreen (toRFC3339Nano $msg.ts) }}] {{ levelColor $msg.level }} ({{ colorCyan $msg.caller }}) {{ $msg.msg }}{{ else }} {{ .Message }} {{ end }}{{"\n"}}' backend
+tailfin --template='{{.Namespace}}/{{.ServiceName}} {{ with $msg := .Message | tryParseJSON }}[{{ colorGreen (toRFC3339Nano $msg.ts) }}] {{ levelColor $msg.level }} ({{ colorCyan $msg.caller }}) {{ $msg.msg }}{{ else }} {{ .Message }} {{ end }}{{"\n"}}' backend
 ```
 
 Load custom template from file:

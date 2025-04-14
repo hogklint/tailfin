@@ -25,9 +25,11 @@ type Log struct {
 
 	ContainerName string `json:"container"`
 
-	ComposeProject string `json:"compose"`
+	ServiceName     string `json:"service"`
+	Namespace       string `json:"namespace"`
+	ContainerNumber string `json:"number"`
 
-	ComposeColor   *color.Color `json:"-"`
+	NamespaceColor *color.Color `json:"-"`
 	ContainerColor *color.Color `json:"-"`
 }
 

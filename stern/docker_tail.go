@@ -20,14 +20,16 @@ import (
 type ContainerConfig struct {
 	id             string
 	name           string
+	service        string
 	composeProject string
+	number         string
 	tty            bool
 }
 
 type DockerTail struct {
 	client         *dockerclient.Client
 	container      ContainerConfig
-	composeColor   *color.Color
+	namespaceColor *color.Color
 	containerColor *color.Color
 	options        *TailOptions
 	tmpl           *template.Template
@@ -48,13 +50,13 @@ func NewDockerTail(
 	out, errOut io.Writer,
 	options *TailOptions,
 ) *DockerTail {
-	composeColor, containerColor := determineDockerColor(containerConfig.name, containerConfig.composeProject)
+	namespaceColor, containerColor := determineDockerColor(containerConfig.name, containerConfig.composeProject)
 
 	return &DockerTail{
 		client:         client,
 		container:      containerConfig,
 		options:        options,
-		composeColor:   composeColor,
+		namespaceColor: namespaceColor,
 		containerColor: containerColor,
 		tmpl:           tmpl,
 		closed:         make(chan struct{}),
@@ -63,12 +65,12 @@ func NewDockerTail(
 	}
 }
 
-func determineDockerColor(containerName, composeProject string) (*color.Color, *color.Color) {
+func determineDockerColor(containerName, namespace string) (*color.Color, *color.Color) {
 	containerColor := colorList[colorIndex(containerName)][1]
-	if composeProject == "" {
+	if namespace == "" {
 		return colorList[0][0], containerColor
 	}
-	return colorList[colorIndex(composeProject)][0], containerColor
+	return colorList[colorIndex(namespace)][0], containerColor
 }
 
 func (t *DockerTail) Start(ctx context.Context) error {
@@ -170,11 +172,13 @@ func (t *DockerTail) consumeLine(line string) {
 
 func (t *DockerTail) Print(msg string) {
 	vm := Log{
-		Message:        msg,
-		ContainerName:  t.container.name,
-		ComposeProject: t.container.composeProject,
-		ComposeColor:   t.composeColor,
-		ContainerColor: t.containerColor,
+		Message:         msg,
+		ContainerName:   t.container.name,
+		ServiceName:     t.container.service,
+		Namespace:       t.container.composeProject,
+		ContainerNumber: t.container.number,
+		NamespaceColor:  t.namespaceColor,
+		ContainerColor:  t.containerColor,
 	}
 
 	var buf bytes.Buffer
@@ -189,12 +193,12 @@ func (t *DockerTail) Print(msg string) {
 func (t *DockerTail) printStarting() {
 	if !t.options.OnlyLogLines {
 		g := color.New(color.FgHiGreen, color.Bold).SprintFunc()
-		p := t.composeColor.SprintFunc()
+		p := t.namespaceColor.SprintFunc()
 		c := t.containerColor.SprintFunc()
 		if t.container.composeProject == "" {
 			fmt.Fprintf(t.errOut, "%s %s\n", g("+"), c(t.container.name))
 		} else {
-			fmt.Fprintf(t.errOut, "%s %s › %s\n", g("+"), p(t.container.composeProject), c(t.container.name))
+			fmt.Fprintf(t.errOut, "%s %s › %s\n", g("+"), p(t.container.composeProject), c(t.container.service))
 		}
 	}
 }
@@ -202,12 +206,12 @@ func (t *DockerTail) printStarting() {
 func (t *DockerTail) printStopping() {
 	if !t.options.OnlyLogLines {
 		r := color.New(color.FgHiRed, color.Bold).SprintFunc()
-		p := t.composeColor.SprintFunc()
+		p := t.namespaceColor.SprintFunc()
 		c := t.containerColor.SprintFunc()
 		if t.container.composeProject == "" {
 			fmt.Fprintf(t.errOut, "%s %s\n", r("-"), c(t.container.name))
 		} else {
-			fmt.Fprintf(t.errOut, "%s %s › %s\n", r("-"), p(t.container.composeProject), c(t.container.name))
+			fmt.Fprintf(t.errOut, "%s %s › %s\n", r("-"), p(t.container.composeProject), c(t.container.service))
 		}
 	}
 }

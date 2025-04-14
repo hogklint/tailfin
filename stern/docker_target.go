@@ -12,11 +12,13 @@ import (
 )
 
 type DockerTarget struct {
-	Id             string
-	Name           string
-	ComposeProject string
-	Tty            bool
-	ResumeRequest  *ResumeRequest
+	Id              string
+	Name            string
+	ServiceName     string
+	ComposeProject  string
+	ContainerNumber string
+	Tty             bool
+	ResumeRequest   *ResumeRequest
 }
 
 type dockerTargetFilterConfig struct {
@@ -47,19 +49,23 @@ func newDockerTargetFilter(filterConfig dockerTargetFilterConfig, lruCacheSize i
 }
 
 func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t *DockerTarget)) {
-	composeProject := ""
+	var composeProject, containerNumber string
 	containerName := strings.TrimPrefix(container.Name, "/")
+	serviceName := containerName
 	if p, ok := container.Config.Labels["com.docker.compose.project"]; ok {
 		composeProject = p
 	}
 	if s, ok := container.Config.Labels["com.docker.compose.service"]; ok {
-		containerName = s
+		serviceName = s
+	}
+	if n, ok := container.Config.Labels["com.docker.compose.container-number"]; ok {
+		containerNumber = n
 	}
 
-	if !f.matchingNameFilter(containerName) ||
+	if !f.matchingNameFilter(serviceName) ||
 		!f.matchingComposeFilter(composeProject) ||
 		!f.matchingImageFilter(container.Config.Image) ||
-		f.matchingNameExcludeFilter(containerName) {
+		f.matchingNameExcludeFilter(serviceName) {
 		return
 	}
 
@@ -78,11 +84,13 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		resumeRequest = rr
 	}
 	target := &DockerTarget{
-		Id:             container.ID,
-		Name:           containerName,
-		ComposeProject: composeProject,
-		Tty:            container.Config.Tty,
-		ResumeRequest:  resumeRequest,
+		Id:              container.ID,
+		Name:            containerName,
+		ServiceName:     serviceName,
+		ComposeProject:  composeProject,
+		ContainerNumber: containerNumber,
+		Tty:             container.Config.Tty,
+		ResumeRequest:   resumeRequest,
 	}
 
 	if f.shouldAdd(target, startedAt) {

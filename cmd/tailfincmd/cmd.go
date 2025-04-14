@@ -72,10 +72,9 @@ type options struct {
 	configFilePath   string
 	stdin            bool
 	containerColors  []string
-	composeColors    []string
+	namespaceColor   []string
 	//containerStates     []string
 	//selector            string
-	//compose            []string
 
 	dockerClient *dockerclient.Client
 }
@@ -263,8 +262,8 @@ func (o *options) setVerbosity() error {
 }
 
 func (o *options) setColorList() error {
-	if len(o.containerColors) > 0 || len(o.composeColors) > 0 {
-		return stern.SetColorList(o.composeColors, o.containerColors)
+	if len(o.containerColors) > 0 || len(o.namespaceColor) > 0 {
+		return stern.SetColorList(o.namespaceColor, o.containerColors)
 	}
 	return nil
 }
@@ -356,10 +355,9 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.IntVar(&o.verbosity, "verbosity", o.verbosity, "Number of the log level verbosity")
 	fs.BoolVarP(&o.version, "version", "v", o.version, "Print the version and exit.")
 	fs.BoolVar(&o.stdin, "stdin", o.stdin, "Parse logs from stdin. All Docker related flags are ignored when it is set.")
-	fs.StringSliceVar(&o.containerColors, "compose-colors", o.containerColors, "Specifies the colors used to highlight container names. Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., \"91,92,93,94,95,96\".")
-	fs.StringSliceVar(&o.composeColors, "container-colors", o.composeColors, "Specifies the colors used to highlight compose project names. Use the same format as --container-colors. Defaults to the values of --container-colors if omitted, and must match its length.")
+	fs.StringSliceVar(&o.containerColors, "container-colors", o.containerColors, "Specifies the colors used to highlight container names. Use the same format as --namespace-colors. Defaults to the values of --namespace-colors if omitted, and must match its length.")
+	fs.StringSliceVar(&o.namespaceColor, "namespace-colors", o.namespaceColor, "Specifies the colors used to highlight namespace (compose project). Provide colors as a comma-separated list using SGR (Select Graphic Rendition) sequences, e.g., \"91,92,93,94,95,96\".")
 	// TODO: --context for docker context? Seems to be a `docker` thing, not a dockerd thing.
-	// TODO: --ignore-compose to make it unaware of compose (e.g. use full container name)
 	// TODO  --prompt??
 
 	fs.Lookup("timestamps").NoOptDefVal = "default"
@@ -377,15 +375,15 @@ func (o *options) generateTemplate() (*template.Template, error) {
 	if t == "" {
 		switch o.output {
 		case "default":
-			t = "{{if .ComposeProject}}{{color .ComposeColor .ComposeProject}} {{end}}{{color .ContainerColor .ContainerName}} {{.Message}}"
+			t = "{{if .Namespace}}{{color .NamespaceColor .Namespace}} {{end}}{{color .ContainerColor .ServiceName}} {{.Message}}"
 		case "raw":
 			t = "{{.Message}}"
 		case "json":
 			t = "{{json .}}"
 		case "extjson":
-			t = "{\"compose\": \"{{if .ComposeProject}}{{color .ComposeColor .ComposeProject}}{{end}}\", \"container\": \"{{color .ContainerColor .ContainerName}}\", \"message\": {{extjson .Message}}}"
+			t = "{\"namespace\": \"{{if .Namespace}}{{color .NamespaceColor .Namespace}}{{end}}\", \"service\": \"{{color .ContainerColor .ServiceName}}\", \"message\": {{extjson .Message}}}"
 		case "ppextjson":
-			t = "{\n  \"compose\": \"{{if .ComposeProject}}{{color .ComposeColor .ComposeProject}}{{end}}\",\n  \"container\": \"{{color .ContainerColor .ContainerName}}\",\n  \"message\": {{extjson .Message}}\n}"
+			t = "{\n  \"namespace\": \"{{if .Namespace}}{{color .NamespaceColor .Namespace}}{{end}}\",\n  \"service\": \"{{color .ContainerColor .ServiceName}}\",\n  \"message\": {{extjson .Message}}\n}"
 		default:
 			return nil, errors.New("output should be one of 'default', 'raw', 'json', 'extjson', and 'ppextjson'")
 		}

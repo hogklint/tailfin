@@ -208,7 +208,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			"default message",
-			"compose1 container1 default message\n",
+			"compose1 service1 default message\n",
 			false,
 			true,
 		},
@@ -234,7 +234,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			"json message",
-			`{"message":"json message","container":"container1","compose":"compose1"}
+			`{"message":"json message","container":"container1","service":"service1","namespace":"compose1","number":"0"}
 `,
 			false,
 			true,
@@ -248,7 +248,7 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 				return o
 			}(),
 			`{"msg":"extjson message"}`,
-			`{"compose": "compose1", "container": "container1", "message": {"msg":"extjson message"}}
+			`{"namespace": "compose1", "service": "service1", "message": {"msg":"extjson message"}}
 `,
 			false,
 			true,
@@ -263,8 +263,8 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			}(),
 			`{"msg":"ppextjson message"}`,
 			`{
-  "compose": "compose1",
-  "container": "container1",
+  "namespace": "compose1",
+  "service": "service1",
   "message": {"msg":"ppextjson message"}
 }
 `,
@@ -288,12 +288,12 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			"template",
 			func() *options {
 				o := NewOptions(streams)
-				o.template = "Message={{.Message}} ComposeProject={{.ComposeProject}} ContainerName={{.ContainerName}}"
+				o.template = "Message={{.Message}} Namespace={{.Namespace}} ContainerName={{.ContainerName}}"
 
 				return o
 			}(),
 			"template message", // no new line
-			"Message=template message ComposeProject=compose1 ContainerName=container1",
+			"Message=template message Namespace=compose1 ContainerName=container1",
 			false,
 			true,
 		},
@@ -380,11 +380,14 @@ func TestOptionsGenerateTemplate(t *testing.T) {
 			log := stern.Log{
 				Message:        tt.message,
 				ContainerName:  "container1",
+				ServiceName:    "container1",
 				ContainerColor: color.New(color.FgBlue),
 			}
 			if tt.withCompose {
-				log.ComposeProject = "compose1"
-				log.ComposeColor = color.New(color.FgBlue)
+				log.Namespace = "compose1"
+				log.ServiceName = "service1"
+				log.ContainerNumber = "0"
+				log.NamespaceColor = color.New(color.FgBlue)
 			}
 			tmpl, err := tt.o.generateTemplate()
 

@@ -46,7 +46,7 @@ func TestPrintStarting(t *testing.T) {
 		{
 			true,
 			&TailOptions{},
-			[]byte("+ compose › name\n"),
+			[]byte("+ compose › service\n"),
 		},
 		{
 			false,
@@ -70,10 +70,14 @@ func TestPrintStarting(t *testing.T) {
 		}
 		tail := NewDockerTail(
 			nil,
-			"id",
-			"name",
-			compose,
-			false,
+			ContainerConfig{
+				"id",
+				"name",
+				"service",
+				compose,
+				"0",
+				false,
+			},
 			nil,
 			io.Discard,
 			errOut,
@@ -96,7 +100,7 @@ func TestPrintStopping(t *testing.T) {
 		{
 			true,
 			&TailOptions{},
-			[]byte("- compose › name\n"),
+			[]byte("- compose › service\n"),
 		},
 		{
 			false,
@@ -120,10 +124,14 @@ func TestPrintStopping(t *testing.T) {
 		}
 		tail := NewDockerTail(
 			nil,
-			"id",
-			"name",
-			compose,
-			false,
+			ContainerConfig{
+				"id",
+				"name",
+				"service",
+				compose,
+				"0",
+				false,
+			},
 			nil,
 			io.Discard,
 			errOut,
@@ -195,10 +203,14 @@ line 4 (container1)
 			out := new(bytes.Buffer)
 			tail := NewDockerTail(
 				nil,
-				"id",
-				"container1",
-				"",
-				true,
+				ContainerConfig{
+					"id",
+					"container1",
+					"",
+					"",
+					"0",
+					true,
+				},
 				tmpl,
 				out,
 				out,
