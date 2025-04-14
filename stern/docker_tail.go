@@ -17,15 +17,19 @@ import (
 	"k8s.io/klog/v2"
 )
 
+type ContainerConfig struct {
+	id             string
+	name           string
+	composeProject string
+	tty            bool
+}
+
 type DockerTail struct {
 	client         *dockerclient.Client
-	ContainerId    string
-	ContainerName  string
-	ComposeProject string
-	Tty            bool
+	container      ContainerConfig
 	composeColor   *color.Color
 	containerColor *color.Color
-	Options        *TailOptions
+	options        *TailOptions
 	tmpl           *template.Template
 	closed         chan struct{}
 	last           struct {
@@ -39,23 +43,17 @@ type DockerTail struct {
 
 func NewDockerTail(
 	client *dockerclient.Client,
-	containerId string,
-	containerName string,
-	composeProject string,
-	tty bool,
+	containerConfig ContainerConfig,
 	tmpl *template.Template,
 	out, errOut io.Writer,
 	options *TailOptions,
 ) *DockerTail {
-	composeColor, containerColor := determineDockerColor(containerName, composeProject)
+	composeColor, containerColor := determineDockerColor(containerConfig.name, containerConfig.composeProject)
 
 	return &DockerTail{
 		client:         client,
-		ContainerId:    containerId,
-		ContainerName:  containerName,
-		ComposeProject: composeProject,
-		Tty:            tty,
-		Options:        options,
+		container:      containerConfig,
+		options:        options,
 		composeColor:   composeColor,
 		containerColor: containerColor,
 		tmpl:           tmpl,
@@ -84,14 +82,14 @@ func (t *DockerTail) Start(ctx context.Context) error {
 
 	logs, err := t.client.ContainerLogs(
 		ctx,
-		t.ContainerId,
+		t.container.id,
 		container.LogsOptions{
 			ShowStdout: true,
 			ShowStderr: true,
-			Follow:     t.Options.Follow,
+			Follow:     t.options.Follow,
 			Timestamps: true,
-			Since:      t.Options.DockerSinceTime,
-			Tail:       t.Options.DockerTailLines,
+			Since:      t.options.DockerSinceTime,
+			Tail:       t.options.DockerTailLines,
 		},
 	)
 	if err != nil {
@@ -101,7 +99,7 @@ func (t *DockerTail) Start(ctx context.Context) error {
 
 	err = t.consumeStream(ctx, logs)
 	if err != nil {
-		klog.V(7).ErrorS(err, "Error fetching logs for container", "name", t.ContainerName, "id", t.ContainerId)
+		klog.V(7).ErrorS(err, "Error fetching logs for container", "name", t.container.name, "id", t.container.id)
 		if errors.Is(err, context.Canceled) || errdefs.IsConflict(err) {
 			return nil
 		}
@@ -117,8 +115,8 @@ func (t *DockerTail) Close() {
 
 func (t *DockerTail) Resume(ctx context.Context, resumeRequest *ResumeRequest) error {
 	t.resumeRequest = resumeRequest
-	t.Options.DockerSinceTime = resumeRequest.Timestamp
-	t.Options.DockerTailLines = "-1"
+	t.options.DockerSinceTime = resumeRequest.Timestamp
+	t.options.DockerTailLines = "-1"
 	return t.Start(ctx)
 }
 
@@ -139,7 +137,7 @@ func (t *DockerTail) consumeStream(ctx context.Context, logs io.Reader) error {
 }
 
 func (t *DockerTail) consumeLine(line string) {
-	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(line, t.Tty))
+	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(line, t.container.tty))
 	if err != nil {
 		t.Print(fmt.Sprintf("[%v] %s", err, line))
 		return
@@ -152,14 +150,14 @@ func (t *DockerTail) consumeLine(line string) {
 	}
 	t.resumeRequest = nil
 
-	if t.Options.IsExclude(content) || !t.Options.IsInclude(content) {
+	if t.options.IsExclude(content) || !t.options.IsInclude(content) {
 		return
 	}
 
-	msg := t.Options.HighlightMatchedString(content)
+	msg := t.options.HighlightMatchedString(content)
 
-	if t.Options.Timestamps {
-		updatedTs, err := t.Options.UpdateTimezoneAndFormat(rfc3339Nano)
+	if t.options.Timestamps {
+		updatedTs, err := t.options.UpdateTimezoneAndFormat(rfc3339Nano)
 		if err != nil {
 			t.Print(fmt.Sprintf("[%v] %s", err, line))
 			return
@@ -173,8 +171,8 @@ func (t *DockerTail) consumeLine(line string) {
 func (t *DockerTail) Print(msg string) {
 	vm := Log{
 		Message:        msg,
-		ContainerName:  t.ContainerName,
-		ComposeProject: t.ComposeProject,
+		ContainerName:  t.container.name,
+		ComposeProject: t.container.composeProject,
 		ComposeColor:   t.composeColor,
 		ContainerColor: t.containerColor,
 	}
@@ -189,27 +187,27 @@ func (t *DockerTail) Print(msg string) {
 }
 
 func (t *DockerTail) printStarting() {
-	if !t.Options.OnlyLogLines {
+	if !t.options.OnlyLogLines {
 		g := color.New(color.FgHiGreen, color.Bold).SprintFunc()
 		p := t.composeColor.SprintFunc()
 		c := t.containerColor.SprintFunc()
-		if t.ComposeProject == "" {
-			fmt.Fprintf(t.errOut, "%s %s\n", g("+"), c(t.ContainerName))
+		if t.container.composeProject == "" {
+			fmt.Fprintf(t.errOut, "%s %s\n", g("+"), c(t.container.name))
 		} else {
-			fmt.Fprintf(t.errOut, "%s %s › %s\n", g("+"), p(t.ComposeProject), c(t.ContainerName))
+			fmt.Fprintf(t.errOut, "%s %s › %s\n", g("+"), p(t.container.composeProject), c(t.container.name))
 		}
 	}
 }
 
 func (t *DockerTail) printStopping() {
-	if !t.Options.OnlyLogLines {
+	if !t.options.OnlyLogLines {
 		r := color.New(color.FgHiRed, color.Bold).SprintFunc()
 		p := t.composeColor.SprintFunc()
 		c := t.containerColor.SprintFunc()
-		if t.ComposeProject == "" {
-			fmt.Fprintf(t.errOut, "%s %s\n", r("-"), c(t.ContainerName))
+		if t.container.composeProject == "" {
+			fmt.Fprintf(t.errOut, "%s %s\n", r("-"), c(t.container.name))
 		} else {
-			fmt.Fprintf(t.errOut, "%s %s › %s\n", r("-"), p(t.ComposeProject), c(t.ContainerName))
+			fmt.Fprintf(t.errOut, "%s %s › %s\n", r("-"), p(t.container.composeProject), c(t.container.name))
 		}
 	}
 }
