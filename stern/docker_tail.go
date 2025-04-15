@@ -127,7 +127,7 @@ func (t *DockerTail) consumeStream(ctx context.Context, logs io.Reader) error {
 	for {
 		line, err := r.ReadBytes('\n')
 		if len(line) != 0 {
-			t.consumeLine(strings.TrimSuffix(string(line), "\n"))
+			t.consumeLine(strings.TrimRight(string(line), "\r\n"))
 		}
 		if err != nil {
 			if err != io.EOF {
@@ -215,8 +215,9 @@ func (t *DockerTail) printStopping() {
 }
 
 // Container stream format: https://docs.docker.com/reference/api/engine/version/v1.47/#tag/Container/operation/ContainerAttach
-// When TTY is not enabled the lines are prefixed with stream type (stdin/stdout/stderr). We don't need it, so it's just
-// stripped away.
+// When TTY is not enabled, the lines are prefixed with stream type (stdin/stdout/stderr). We don't need it, so it's just
+// stripped away. The header also contains the payload size, but it seems good enough to just read full lines, which is
+// also easier since the format differs depending on TTY.
 func trimLeadingChars(line string, tty bool) string {
 	if tty {
 		return line
