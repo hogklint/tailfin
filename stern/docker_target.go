@@ -12,12 +12,13 @@ import (
 )
 
 type DockerTarget struct {
-	Id             string
-	Name           string
-	ComposeProject string
-	Tty            bool
-	StartedAt      time.Time
-	ResumeRequest  *ResumeRequest
+	Id              string
+	Name            string
+	ServiceName     string
+	ComposeProject  string
+	ContainerNumber string
+	Tty             bool
+	ResumeRequest   *ResumeRequest
 }
 
 type dockerTargetFilterConfig struct {
@@ -48,19 +49,23 @@ func newDockerTargetFilter(filterConfig dockerTargetFilterConfig, lruCacheSize i
 }
 
 func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t *DockerTarget)) {
-	composeProject := ""
+	var composeProject, containerNumber string
 	containerName := strings.TrimPrefix(container.Name, "/")
+	serviceName := containerName
 	if p, ok := container.Config.Labels["com.docker.compose.project"]; ok {
 		composeProject = p
 	}
 	if s, ok := container.Config.Labels["com.docker.compose.service"]; ok {
-		containerName = s
+		serviceName = s
+	}
+	if n, ok := container.Config.Labels["com.docker.compose.container-number"]; ok {
+		containerNumber = n
 	}
 
-	if !f.matchingNameFilter(containerName) ||
+	if !f.matchingNameFilter(serviceName) ||
 		!f.matchingComposeFilter(composeProject) ||
 		!f.matchingImageFilter(container.Config.Image) ||
-		f.matchingNameExcludeFilter(containerName) {
+		f.matchingNameExcludeFilter(serviceName) {
 		return
 	}
 
@@ -79,29 +84,30 @@ func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t
 		resumeRequest = rr
 	}
 	target := &DockerTarget{
-		Id:             container.ID,
-		Name:           containerName,
-		ComposeProject: composeProject,
-		Tty:            container.Config.Tty,
-		StartedAt:      startedAt,
-		ResumeRequest:  resumeRequest,
+		Id:              container.ID,
+		Name:            containerName,
+		ServiceName:     serviceName,
+		ComposeProject:  composeProject,
+		ContainerNumber: containerNumber,
+		Tty:             container.Config.Tty,
+		ResumeRequest:   resumeRequest,
 	}
 
-	if f.shouldAdd(target) {
+	if f.shouldAdd(target, startedAt) {
 		visitor(target)
 	}
 }
 
-func (f *dockerTargetFilter) shouldAdd(t *DockerTarget) bool {
+func (f *dockerTargetFilter) shouldAdd(t *DockerTarget, startedAt time.Time) bool {
 	f.mu.Lock()
-	startedAt, found := f.activeContainers[t.Id]
-	f.activeContainers[t.Id] = t.StartedAt
+	activeStartedAt, found := f.activeContainers[t.Id]
+	f.activeContainers[t.Id] = startedAt
 	f.mu.Unlock()
 
 	// Listed already terminated containers will not emit a Die event so they will stay in the activeContainers map. When
 	// restarted it should still be added if the start time is different. If the start time is the same it means the
 	// container was listed as well as received in a start event i.e. should not be added twice.
-	if found && startedAt == t.StartedAt {
+	if found && activeStartedAt == startedAt {
 		klog.V(7).InfoS("Container ID existed before observation",
 			"id", t.Id, "name", t.Name)
 		return false

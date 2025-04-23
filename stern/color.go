@@ -24,8 +24,8 @@ func colorIndex(name string) uint32 {
 	return hash.Sum32() % uint32(len(colorList))
 }
 
-func SetColorList(composeColors, containerColors []string) error {
-	colors, err := parseColors(composeColors, containerColors)
+func SetColorList(namespaceColor, containerColors []string) error {
+	colors, err := parseColors(namespaceColor, containerColors)
 	if err != nil {
 		return err
 	}
@@ -33,24 +33,24 @@ func SetColorList(composeColors, containerColors []string) error {
 	return nil
 }
 
-func parseColors(composeColors, containerColors []string) ([][2]*color.Color, error) {
-	if len(composeColors) == 0 {
-		return nil, errors.New("compose-colors must not be empty")
+func parseColors(namespaceColor, containerColors []string) ([][2]*color.Color, error) {
+	if len(namespaceColor) == 0 {
+		return nil, errors.New("namespace-colors must not be empty")
 	}
 	if len(containerColors) == 0 {
-		// if containerColors is empty, use composeColors as containerColors
-		return createColorPairs(composeColors, composeColors)
+		// if containerColors is empty, use namespaceColor as containerColors
+		return createColorPairs(namespaceColor, namespaceColor)
 	}
-	if len(containerColors) != len(composeColors) {
-		return nil, errors.New("compose-colors and container-colors must have the same length")
+	if len(containerColors) != len(namespaceColor) {
+		return nil, errors.New("namespace-colors and container-colors must have the same length")
 	}
-	return createColorPairs(composeColors, containerColors)
+	return createColorPairs(namespaceColor, containerColors)
 }
 
-func createColorPairs(composeColors, containerColors []string) ([][2]*color.Color, error) {
-	colorList := make([][2]*color.Color, 0, len(composeColors))
-	for i := 0; i < len(composeColors); i++ {
-		composeColor, err := sgrSequenceToColor(composeColors[i])
+func createColorPairs(namespaceColor, containerColors []string) ([][2]*color.Color, error) {
+	colorList := make([][2]*color.Color, 0, len(namespaceColor))
+	for i := 0; i < len(namespaceColor); i++ {
+		namespaceColor, err := sgrSequenceToColor(namespaceColor[i])
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +58,7 @@ func createColorPairs(composeColors, containerColors []string) ([][2]*color.Colo
 		if err != nil {
 			return nil, err
 		}
-		colorList = append(colorList, [2]*color.Color{composeColor, containerColor})
+		colorList = append(colorList, [2]*color.Color{namespaceColor, containerColor})
 	}
 	return colorList, nil
 }

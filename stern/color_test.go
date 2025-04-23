@@ -9,14 +9,14 @@ import (
 func TestParseColors(t *testing.T) {
 	tests := []struct {
 		desc            string
-		composeColors   []string
+		namespaceColors []string
 		containerColors []string
 		want            [][2]*color.Color
 		wantError       bool
 	}{
 		{
 			desc:            "both compose and container colors are specified",
-			composeColors:   []string{"91", "92", "93"},
+			namespaceColors: []string{"91", "92", "93"},
 			containerColors: []string{"31", "32", "33"},
 			want: [][2]*color.Color{
 				{color.New(color.FgHiRed), color.New(color.FgRed)},
@@ -26,7 +26,7 @@ func TestParseColors(t *testing.T) {
 		},
 		{
 			desc:            "only compose colors are specified",
-			composeColors:   []string{"91", "92", "93"},
+			namespaceColors: []string{"91", "92", "93"},
 			containerColors: []string{},
 			want: [][2]*color.Color{
 				{color.New(color.FgHiRed), color.New(color.FgHiRed)},
@@ -36,7 +36,7 @@ func TestParseColors(t *testing.T) {
 		},
 		{
 			desc:            "multiple attributes",
-			composeColors:   []string{"4;91"},
+			namespaceColors: []string{"4;91"},
 			containerColors: []string{"38;2;255;97;136"},
 			want: [][2]*color.Color{
 				{
@@ -47,7 +47,7 @@ func TestParseColors(t *testing.T) {
 		},
 		{
 			desc:            "spaces are ignored",
-			composeColors:   []string{"  91 ", "\t92\t"},
+			namespaceColors: []string{"  91 ", "\t92\t"},
 			containerColors: []string{},
 			want: [][2]*color.Color{
 				{color.New(color.FgHiRed), color.New(color.FgHiRed)},
@@ -57,26 +57,26 @@ func TestParseColors(t *testing.T) {
 		// error patterns
 		{
 			desc:            "only container colors are specified",
-			composeColors:   []string{},
+			namespaceColors: []string{},
 			containerColors: []string{"31", "32", "33"},
 			wantError:       true,
 		},
 		{
 			desc:            "both compose and container colors are empty",
-			composeColors:   []string{},
+			namespaceColors: []string{},
 			containerColors: []string{},
 			wantError:       true,
 		},
 		{
 			desc:            "invalid color",
-			composeColors:   []string{"a"},
+			namespaceColors: []string{"a"},
 			containerColors: []string{""},
 			wantError:       true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.desc, func(t *testing.T) {
-			colorList, err := parseColors(tt.composeColors, tt.containerColors)
+			colorList, err := parseColors(tt.namespaceColors, tt.containerColors)
 
 			if tt.wantError {
 				if err == nil {
