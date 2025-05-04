@@ -558,26 +558,6 @@ func (o *options) generateTemplate() (*template.Template, error) {
 	return template, err
 }
 
-// TODO: Adjust to container filter? Maybe this is where image filtering is done
-//func (o *options) generateFieldSelector() (fields.Selector, error) {
-//	var queries []string
-//	if o.fieldSelector != "" {
-//		queries = append(queries, o.fieldSelector)
-//	}
-//	if o.node != "" {
-//		queries = append(queries, fmt.Sprintf("spec.nodeName=%s", o.node))
-//	}
-//	if len(queries) == 0 {
-//		return fields.Everything(), nil
-//	}
-//
-//	fieldSelector, err := fields.ParseSelector(strings.Join(queries, ","))
-//	if err != nil {
-//		return nil, errors.Wrap(err, "failed to parse selector as field selector")
-//	}
-//	return fieldSelector, nil
-//}
-
 func NewTailfinCmd(streams IOStreams) (*cobra.Command, error) {
 	o := NewOptions(streams)
 
