@@ -15,8 +15,8 @@ package tailfincmd
 import (
 	"context"
 	"encoding/json"
-	goflag "flag"
 	"fmt"
+	"github.com/containerd/log"
 	"github.com/fatih/color"
 	"github.com/hogklint/tailfin/stern"
 	"github.com/mitchellh/go-homedir"
@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 	"io"
-	"k8s.io/klog/v2"
 	"os"
 	"regexp"
 	"strconv"
@@ -66,7 +65,7 @@ type options struct {
 	output           string
 	containerQuery   []string
 	noFollow         bool
-	verbosity        int
+	verbosity        string
 	onlyLogLines     bool
 	maxLogRequests   int
 	configFilePath   string
@@ -93,6 +92,7 @@ func NewOptions(streams IOStreams) *options {
 		timestamps:     "",
 		timezone:       "Local",
 		noFollow:       false,
+		verbosity:      "fatal",
 		maxLogRequests: -1,
 		configFilePath: defaultConfigFilePath,
 	}
@@ -250,13 +250,8 @@ func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
 
 // setVerbosity sets the log level verbosity
 func (o *options) setVerbosity() error {
-	if o.verbosity != 0 {
-		// klog does not have an external method to set verbosity,
-		// so we need to set it by a flag.
-		// See https://github.com/kubernetes/klog/issues/336 for details
-		var fs goflag.FlagSet
-		klog.InitFlags(&fs)
-		return fs.Set("v", strconv.Itoa(o.verbosity))
+	if o.verbosity != "" {
+		return log.SetLevel(o.verbosity)
 	}
 	return nil
 }
@@ -299,7 +294,7 @@ func (o *options) overrideFlagSetDefaultFromConfig(fs *pflag.FlagSet) error {
 			// To avoid command execution failure, we only output a warning
 			// message instead of exiting with an error if an unknown option is
 			// specified.
-			klog.Warningf("Unknown option specified in the config file: %s", name)
+			log.L.Warningf("Unknown option specified in the config file: %s", name)
 			continue
 		}
 
@@ -352,7 +347,7 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.timezone, "timezone", o.timezone, "Set timestamps to specific timezone.")
 	fs.BoolVar(&o.onlyLogLines, "only-log-lines", o.onlyLogLines, "Print only log lines")
 	fs.StringVar(&o.configFilePath, "config", o.configFilePath, "Path to the tailfin config file")
-	fs.IntVar(&o.verbosity, "verbosity", o.verbosity, "Number of the log level verbosity")
+	fs.StringVar(&o.verbosity, "verbosity", o.verbosity, "Log level. One of panic, fatal, error, warning, info, debug, or trace")
 	fs.BoolVarP(&o.version, "version", "v", o.version, "Print the version and exit.")
 	fs.BoolVar(&o.stdin, "stdin", o.stdin, "Parse logs from stdin. All Docker related flags are ignored when it is set.")
 	fs.StringSliceVar(&o.containerColors, "container-colors", o.containerColors, "Specifies the colors used to highlight container names. Use the same format as --namespace-colors. Defaults to the values of --namespace-colors if omitted, and must match its length.")

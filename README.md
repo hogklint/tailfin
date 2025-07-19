@@ -59,7 +59,7 @@ The `container query` is a regular expression of the container name; you could p
  `--template-file`, `-T`     |                                 | Path to template to use for log lines, leave empty to use --output flag. It overrides --template option.
  `--timestamps`, `-t`        |                                 | Print timestamps with the specified format. One of 'default' or 'short' in the form '--timestamps=format' ('=' cannot be omitted). If specified but without value, 'default' is used.
  `--timezone`                | `Local`                         | Set timestamps to specific timezone.
- `--verbosity`               | `0`                             | Number of the log level verbosity
+ `--verbosity`               | `fatal`                         | Log level. One of panic, fatal, error, warning, info, debug, or trace
  `--version`, `-v`           | `false`                         | Print the version and exit.
 <!-- auto generated cli flags end --->
 

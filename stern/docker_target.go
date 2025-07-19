@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/containerd/log"
 	"github.com/docker/docker/api/types"
 	"github.com/hashicorp/golang-lru/v2"
-	"k8s.io/klog/v2"
 )
 
 type DockerTarget struct {
@@ -108,8 +108,7 @@ func (f *dockerTargetFilter) shouldAdd(t *DockerTarget, startedAt time.Time) boo
 	// restarted it should still be added if the start time is different. If the start time is the same it means the
 	// container was listed as well as received in a start event i.e. should not be added twice.
 	if found && activeStartedAt == startedAt {
-		klog.V(7).InfoS("Container ID existed before observation",
-			"id", t.Id, "name", t.Name)
+		log.L.WithField("id", t.Id).WithField("name", t.Name).Info("Container ID existed before observation")
 		return false
 	}
 
@@ -126,15 +125,14 @@ func (f *dockerTargetFilter) matchingNameFilter(containerName string) bool {
 			return true
 		}
 	}
-	klog.V(7).InfoS("Container name does not match filters", "image", containerName)
+	log.L.WithField("name", containerName).Info("Container name does not match filters")
 	return false
 }
 
 func (f *dockerTargetFilter) matchingNameExcludeFilter(containerName string) bool {
 	for _, re := range f.config.containerExcludeFilter {
 		if re.MatchString(containerName) {
-			klog.V(7).InfoS("Container name matches exclude filter",
-				"name", containerName, "excludeFilter", re)
+			log.L.WithField("name", containerName).WithField("excludeFilter", re).Info("Container name matches exclude filter")
 			return true
 		}
 	}
@@ -151,7 +149,7 @@ func (f *dockerTargetFilter) matchingComposeFilter(composeProject string) bool {
 			}
 		}
 	}
-	klog.V(7).InfoS("Compose project name does not match filters", "compose", composeProject)
+	log.L.WithField("compose", composeProject).Info("Compose project name does not match filters")
 	return false
 }
 
@@ -165,7 +163,7 @@ func (f *dockerTargetFilter) matchingImageFilter(containerImage string) bool {
 			return true
 		}
 	}
-	klog.V(7).InfoS("Image does not match image filters", "image", containerImage)
+	log.L.WithField("image", containerImage).Info("Image does not match image filters")
 	return false
 }
 
@@ -173,7 +171,7 @@ func (f *dockerTargetFilter) inactive(containerId string) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	klog.V(7).InfoS("Inactive container", "target", containerId)
+	log.L.WithField("id", containerId).Info("Inactive container")
 	delete(f.activeContainers, containerId)
 }
 
@@ -181,12 +179,12 @@ func (f *dockerTargetFilter) setResumeRequest(containerId string, resume *Resume
 	if resume == nil {
 		return
 	}
-	klog.V(7).InfoS("Storing resume request", "target", containerId, "resume", resume)
+	log.L.WithField("id", containerId).WithField("resume", resume).Info("Storing resume request")
 	f.seenContainers.Add(containerId, resume)
 }
 
 func (f *dockerTargetFilter) forget(containerId string) {
-	klog.V(7).InfoS("Forget container", "target", containerId)
+	log.L.WithField("id", containerId).Info("Forget container")
 	// Actively remove container from LRU cache to minimize the risk of old (but not removed) containers getting evicted
 	f.seenContainers.Remove(containerId)
 }
