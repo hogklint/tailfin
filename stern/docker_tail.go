@@ -10,11 +10,11 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/containerd/log"
 	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/docker/docker/errdefs"
 	"github.com/fatih/color"
-	"k8s.io/klog/v2"
 )
 
 type ContainerConfig struct {
@@ -74,7 +74,8 @@ func determineDockerColor(containerName, namespace string) (*color.Color, *color
 }
 
 func (t *DockerTail) Start(ctx context.Context) error {
-	ctx, cancel := context.WithCancel(ctx)
+	tailLog := log.L.WithFields(log.Fields{"name": t.container.name, "id": t.container.id})
+	ctx, cancel := context.WithCancel(log.WithLogger(ctx, tailLog))
 	go func() {
 		<-t.closed
 		cancel()
@@ -101,7 +102,7 @@ func (t *DockerTail) Start(ctx context.Context) error {
 
 	err = t.consumeStream(ctx, logs)
 	if err != nil {
-		klog.V(7).ErrorS(err, "Error fetching logs for container", "name", t.container.name, "id", t.container.id)
+		log.G(ctx).Error("Error fetching logs for container: ", err)
 		if errors.Is(err, context.Canceled) || errdefs.IsConflict(err) {
 			return nil
 		}
@@ -127,7 +128,7 @@ func (t *DockerTail) consumeStream(ctx context.Context, logs io.Reader) error {
 	for {
 		line, err := r.ReadBytes('\n')
 		if len(line) != 0 {
-			t.consumeLine(strings.TrimRight(string(line), "\r\n"))
+			t.consumeLine(ctx, strings.TrimRight(string(line), "\r\n"))
 		}
 		if err != nil {
 			if err != io.EOF {
@@ -138,10 +139,10 @@ func (t *DockerTail) consumeStream(ctx context.Context, logs io.Reader) error {
 	}
 }
 
-func (t *DockerTail) consumeLine(line string) {
-	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(line, t.container.tty))
+func (t *DockerTail) consumeLine(ctx context.Context, line string) {
+	rfc3339Nano, content, err := splitLogLine(trimLeadingChars(ctx, line, t.container.tty))
 	if err != nil {
-		t.Print(fmt.Sprintf("[%v] %s", err, line))
+		t.Print(ctx, fmt.Sprintf("[%v] %s", err, line))
 		return
 	}
 
@@ -161,16 +162,16 @@ func (t *DockerTail) consumeLine(line string) {
 	if t.options.Timestamps {
 		updatedTs, err := t.options.UpdateTimezoneAndFormat(rfc3339Nano)
 		if err != nil {
-			t.Print(fmt.Sprintf("[%v] %s", err, line))
+			t.Print(ctx, fmt.Sprintf("[%v] %s", err, line))
 			return
 		}
 		msg = updatedTs + " " + msg
 	}
 
-	t.Print(msg)
+	t.Print(ctx, msg)
 }
 
-func (t *DockerTail) Print(msg string) {
+func (t *DockerTail) Print(ctx context.Context, msg string) {
 	vm := Log{
 		Message:         msg,
 		ContainerName:   t.container.name,
@@ -184,7 +185,7 @@ func (t *DockerTail) Print(msg string) {
 	var buf bytes.Buffer
 	if err := t.tmpl.Execute(&buf, vm); err != nil {
 		fmt.Fprintf(t.errOut, "expanding template failed: %s\n", err)
-		klog.V(7).ErrorS(err, "Template failure", "message", msg)
+		log.G(ctx).WithField("error", err).WithField("message", msg).Error("Template failure")
 		return
 	}
 	fmt.Fprint(t.out, buf.String())
@@ -220,13 +221,14 @@ func (t *DockerTail) printStopping() {
 // When TTY is not enabled, the lines are prefixed with stream type (stdin/stdout/stderr). We don't need it, so it's just
 // stripped away. The header also contains the payload size, but it seems good enough to just read full lines, which is
 // also easier since the format differs depending on TTY.
-func trimLeadingChars(line string, tty bool) string {
+func trimLeadingChars(ctx context.Context, line string, tty bool) string {
 	if tty {
 		return line
 	}
+	log.G(ctx).WithField("line", line).Trace("Invalid log line format received")
 	if len(line) < 8 {
 		// And sometimes the line is something else...?
-		klog.V(7).InfoS("Invalid log line format received", "line", line)
+		log.G(ctx).WithField("line", line).Info("Invalid log line format received")
 		return ""
 	}
 	return line[8:]

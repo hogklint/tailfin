@@ -15,7 +15,6 @@ package tailfincmd
 import (
 	"context"
 	"encoding/json"
-	goflag "flag"
 	"fmt"
 	"github.com/containerd/log"
 	"github.com/fatih/color"
@@ -26,7 +25,6 @@ import (
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v3"
 	"io"
-	"k8s.io/klog/v2"
 	"os"
 	"regexp"
 	"strconv"
@@ -296,7 +294,7 @@ func (o *options) overrideFlagSetDefaultFromConfig(fs *pflag.FlagSet) error {
 			// To avoid command execution failure, we only output a warning
 			// message instead of exiting with an error if an unknown option is
 			// specified.
-			klog.Warningf("Unknown option specified in the config file: %s", name)
+			log.L.Warningf("Unknown option specified in the config file: %s", name)
 			continue
 		}
 

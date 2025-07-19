@@ -3,18 +3,18 @@ package stern
 import (
 	"context"
 
+	"github.com/containerd/log"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
-	"k8s.io/klog/v2"
 )
 
 func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTargetFilter, client *dockerclient.Client) (chan *DockerTarget, error) {
 	added := make(chan *DockerTarget)
 	go func() {
 		visitor := func(t *DockerTarget) {
-			klog.V(7).InfoS("Active container", "id", t.Id, "name", t.Name)
+			log.L.WithFields(log.Fields{"id": t.Id, "name": t.Name}).Info("Active container")
 			added <- t
 		}
 		ctx, cancel := context.WithCancel(ctx)
@@ -45,12 +45,12 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 			case e := <-watcher:
 				switch e.Action {
 				case events.ActionStart:
+					log.L.WithField("id", e.ID).Info("Inspect container")
 					container, err := client.ContainerInspect(ctx, e.ID)
 					if err != nil {
-						klog.V(7).ErrorS(err, "failed to inspect container", "id", e.ID)
+						log.L.WithField("id", e.ID).Error(err, ": failed to inspect container")
 						continue
 					}
-					klog.V(8).InfoS("Container inspect", "id", e.ID, "container JSON", container)
 					filter.visit(container, visitor)
 				case events.ActionDie:
 					filter.inactive(e.ID)
