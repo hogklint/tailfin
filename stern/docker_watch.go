@@ -2,6 +2,7 @@ package stern
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
@@ -60,7 +61,8 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 			case <-ctx.Done():
 				close(added)
 				return
-			case <-errc:
+			case err := <-errc:
+				fmt.Fprintf(config.ErrOut, "dockerd error: %v\n", err)
 				close(added)
 				return
 			}

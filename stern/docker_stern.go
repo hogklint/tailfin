@@ -125,8 +125,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 	}
 
 	var numRequests atomic.Int64
-	for {
-		target := <-added
+	for target := range added {
 		numRequests.Add(1)
 		if numRequests.Load() > int64(config.MaxLogRequests) {
 			return fmt.Errorf("tailfin reached the maximum number of log requests (%d),"+
@@ -138,4 +137,5 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 			numRequests.Add(-1)
 		}()
 	}
+	return nil
 }
