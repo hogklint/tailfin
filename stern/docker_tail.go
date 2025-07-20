@@ -225,7 +225,6 @@ func trimLeadingChars(ctx context.Context, line string, tty bool) string {
 	if tty {
 		return line
 	}
-	log.G(ctx).WithField("line", line).Trace("Invalid log line format received")
 	if len(line) < 8 {
 		// And sometimes the line is something else...?
 		log.G(ctx).WithField("line", line).Info("Invalid log line format received")
