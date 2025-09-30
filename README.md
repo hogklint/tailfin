@@ -41,6 +41,7 @@ The `container query` is a regular expression of the container name; you could p
  `--compose`                 | `[]`                            | Compose project name to match (regular expression)
  `--config`                  | `~/.config/tailfin/config.yaml` | Path to the tailfin config file
  `--container-colors`        |                                 | Specifies the colors used to highlight container names. Use the same format as --namespace-colors. Defaults to the values of --namespace-colors if omitted, and must match its length.
+ `--context`                 |                                 | Docker context to use
  `--exclude`, `-e`           | `[]`                            | Log lines to exclude. (regular expression)
  `--exclude-container`, `-E` | `[]`                            | Container name to exclude. (regular expression)
  `--highlight`, `-H`         | `[]`                            | Log lines to highlight. (regular expression)
