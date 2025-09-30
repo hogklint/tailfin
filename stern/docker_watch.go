@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/containerd/log"
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
@@ -29,7 +28,7 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 		for _, label := range config.Label {
 			args.Add("label", label)
 		}
-		opts := types.EventsOptions{Filters: args}
+		opts := events.ListOptions{Filters: args}
 		watcher, errc := client.Events(ctx, opts)
 
 		// Then list all current containers
@@ -46,17 +45,17 @@ func WatchDockers(ctx context.Context, config *DockerConfig, filter *dockerTarge
 			case e := <-watcher:
 				switch e.Action {
 				case events.ActionStart:
-					log.L.WithField("id", e.ID).Info("Inspect container")
-					container, err := client.ContainerInspect(ctx, e.ID)
+					log.L.WithField("id", e.Actor.ID).Info("Inspect container")
+					container, err := client.ContainerInspect(ctx, e.Actor.ID)
 					if err != nil {
-						log.L.WithField("id", e.ID).Error(err, ": failed to inspect container")
+						log.L.WithField("id", e.Actor.ID).Error(err, ": failed to inspect container")
 						continue
 					}
 					filter.visit(container, visitor)
 				case events.ActionDie:
-					filter.inactive(e.ID)
+					filter.inactive(e.Actor.ID)
 				case events.ActionDestroy:
-					filter.forget(e.ID)
+					filter.forget(e.Actor.ID)
 				}
 			case <-ctx.Done():
 				close(added)

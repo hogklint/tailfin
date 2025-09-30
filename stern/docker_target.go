@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/containerd/log"
-	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/api/types/container"
 	"github.com/hashicorp/golang-lru/v2"
 )
 
@@ -48,7 +48,7 @@ func newDockerTargetFilter(filterConfig dockerTargetFilterConfig, lruCacheSize i
 	}
 }
 
-func (f *dockerTargetFilter) visit(container types.ContainerJSON, visitor func(t *DockerTarget)) {
+func (f *dockerTargetFilter) visit(container container.InspectResponse, visitor func(t *DockerTarget)) {
 	var composeProject, containerNumber string
 	containerName := strings.TrimPrefix(container.Name, "/")
 	serviceName := containerName

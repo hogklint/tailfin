@@ -10,10 +10,10 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/containerd/errdefs"
 	"github.com/containerd/log"
 	"github.com/docker/docker/api/types/container"
 	dockerclient "github.com/docker/docker/client"
-	"github.com/docker/docker/errdefs"
 	"github.com/fatih/color"
 )
 

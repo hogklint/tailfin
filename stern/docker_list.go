@@ -5,13 +5,12 @@ import (
 	"fmt"
 	"iter"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	dockerclient "github.com/docker/docker/client"
 )
 
-func ContainerGenerator(ctx context.Context, config *DockerConfig, client *dockerclient.Client) (iter.Seq[types.ContainerJSON], error) {
+func ContainerGenerator(ctx context.Context, config *DockerConfig, client *dockerclient.Client) (iter.Seq[container.InspectResponse], error) {
 	args := filters.NewArgs()
 	for _, label := range config.Label {
 		args.Add("label", label)
@@ -21,7 +20,7 @@ func ContainerGenerator(ctx context.Context, config *DockerConfig, client *docke
 	if err != nil {
 		return nil, err
 	}
-	return func(yield func(types.ContainerJSON) bool) {
+	return func(yield func(container.InspectResponse) bool) {
 		for _, c := range containers {
 			container, err := client.ContainerInspect(ctx, c.ID)
 			if err != nil {
