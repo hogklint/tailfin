@@ -107,7 +107,7 @@ func (f *dockerTargetFilter) shouldAdd(t *DockerTarget, startedAt time.Time) boo
 	// Listed already terminated containers will not emit a Die event so they will stay in the activeContainers map. When
 	// restarted it should still be added if the start time is different. If the start time is the same it means the
 	// container was listed as well as received in a start event i.e. should not be added twice.
-	if found && activeStartedAt == startedAt {
+	if found && activeStartedAt.Equal(startedAt) {
 		log.L.WithField("id", t.Id).WithField("name", t.Name).Info("Container ID existed before observation")
 		return false
 	}

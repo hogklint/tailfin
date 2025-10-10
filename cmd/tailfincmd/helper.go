@@ -44,7 +44,7 @@ func toTimeMilliE(a any) (time.Time, error) {
 	case float64:
 		return time.UnixMilli(int64(v)), nil
 	}
-	return time.Time{}, errors.New("Unsupported type")
+	return time.Time{}, errors.New("unsupported type")
 }
 
 func toTime(a any) time.Time {
