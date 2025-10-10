@@ -11,6 +11,8 @@ GOLANGCI_LINT_VERSION ?= v1.63.1
 GOLANGCI_LINT := $(TOOLS_BIN_DIR)/golangci-lint
 GORELEASER_FILTER_VERSION ?= v0.3.0
 GORELEASER_FILTER := $(TOOLS_BIN_DIR)/goreleaser-filter
+GOVULNCHECK_VERSION ?= v1.1.4
+GOVULNCHECK := $(TOOLS_BIN_DIR)/govulncheck
 
 $(GORELEASER):
 	GOBIN=$(TOOLS_BIN_DIR) go install github.com/goreleaser/goreleaser/v2@$(GORELEASER_VERSION)
@@ -20,6 +22,10 @@ $(GOLANGCI_LINT):
 
 $(GORELEASER_FILTER):
 	GOBIN=$(TOOLS_BIN_DIR) go install github.com/t0yv0/goreleaser-filter@$(GORELEASER_FILTER_VERSION)
+
+$(GOVULNCHECK):
+	GOBIN=$(TOOLS_BIN_DIR) go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+	
 
 .PHONY: build-cross
 build-cross: $(GORELEASER)
@@ -36,6 +42,10 @@ lint: $(GOLANGCI_LINT)
 .PHONY: lint-fix
 lint-fix: $(GOLANGCI_LINT)
 	$(GOLANGCI_LINT) run --fix
+
+.PHONY: govulncheck
+govulncheck: $(GOVULNCHECK)
+	$(GOVULNCHECK) ./...
 
 README_FILE ?= ./README.md
 
