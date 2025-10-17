@@ -46,32 +46,32 @@ type IOStreams struct {
 type options struct {
 	IOStreams
 
-	excludeContainer []string
-	timestamps       string
-	timezone         string
-	since            time.Duration
-	image            []string
-	exclude          []string
-	include          []string
-	highlight        []string
-	label            []string
-	tail             int64
 	color            string
-	version          bool
 	completion       string
 	compose          []string
+	configFilePath   string
+	containerColors  []string
+	containerQuery   []string
+	exclude          []string
+	excludeContainer []string
+	highlight        []string
+	image            []string
+	include          []string
+	label            []string
+	maxLogRequests   int
+	namespaceColor   []string
+	noFollow         bool
+	onlyLogLines     bool
+	output           string
+	since            time.Duration
+	stdin            bool
+	tail             int64
 	template         string
 	templateFile     string
-	output           string
-	containerQuery   []string
-	noFollow         bool
+	timestamps       string
+	timezone         string
 	verbosity        string
-	onlyLogLines     bool
-	maxLogRequests   int
-	configFilePath   string
-	stdin            bool
-	containerColors  []string
-	namespaceColor   []string
+	version          bool
 	//containerStates     []string
 	//selector            string
 
@@ -224,24 +224,24 @@ func (o *options) tailfinConfig() (*stern.DockerConfig, error) {
 	}
 
 	return &stern.DockerConfig{
-		ContainerQuery:        container,
 		ComposeProjectQuery:   compose,
-		Timestamps:            timestampFormat != "",
-		TimestampFormat:       timestampFormat,
-		Label:                 o.label,
-		Location:              location,
-		ExcludeContainerQuery: excludeContainer,
+		ContainerQuery:        container,
 		Exclude:               exclude,
+		ExcludeContainerQuery: excludeContainer,
+		Follow:                !o.noFollow,
+		Highlight:             highlight,
 		ImageQuery:            image,
 		Include:               include,
-		Highlight:             highlight,
+		Label:                 o.label,
+		Location:              location,
+		MaxLogRequests:        maxLogRequests,
+		OnlyLogLines:          o.onlyLogLines,
 		Since:                 o.since,
+		Stdin:                 o.stdin,
 		TailLines:             o.tail,
 		Template:              template,
-		Follow:                !o.noFollow,
-		OnlyLogLines:          o.onlyLogLines,
-		MaxLogRequests:        maxLogRequests,
-		Stdin:                 o.stdin,
+		TimestampFormat:       timestampFormat,
+		Timestamps:            timestampFormat != "",
 
 		Out:    o.Out,
 		ErrOut: o.ErrOut,

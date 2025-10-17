@@ -129,7 +129,7 @@ func RunDocker(ctx context.Context, client *dockerclient.Client, config *DockerC
 		numRequests.Add(1)
 		if numRequests.Load() > int64(config.MaxLogRequests) {
 			return fmt.Errorf("tailfin reached the maximum number of log requests (%d),"+
-				" use --max-log-requests to increase the limit\n",
+				" use --max-log-requests to increase the limit",
 				config.MaxLogRequests)
 		}
 		go func() {

@@ -5,13 +5,12 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 )
 
 func TestTargetFilter(t *testing.T) {
 	validTimestamp := "2000-01-01T00:00:00+00:00"
-	createContainer := func(compose, id, name, image string) types.ContainerJSON {
+	createContainer := func(compose, id, name, image string) container.InspectResponse {
 		var labels map[string]string
 		jsonName := name
 		if compose != "" {
@@ -21,11 +20,11 @@ func TestTargetFilter(t *testing.T) {
 			}
 			jsonName = name + "-0"
 		}
-		return types.ContainerJSON{
-			Mounts: []types.MountPoint{},
-			ContainerJSONBase: &types.ContainerJSONBase{
+		return container.InspectResponse{
+			Mounts: []container.MountPoint{},
+			ContainerJSONBase: &container.ContainerJSONBase{
 				ID: id,
-				State: &types.ContainerState{
+				State: &container.State{
 					Status:     "",
 					Running:    true,
 					Paused:     true,
@@ -44,7 +43,7 @@ func TestTargetFilter(t *testing.T) {
 		}
 	}
 
-	containers := []types.ContainerJSON{
+	containers := []container.InspectResponse{
 		createContainer("", "id1", "container1", "image1"),
 		createContainer("", "id2", "container2", "image1"),
 		createContainer("compose1", "id3", "container1", "image1"),
@@ -207,12 +206,12 @@ func TestTargetFilterShouldAdd(t *testing.T) {
 		composeProjectFilter:   []*regexp.Regexp{},
 		imageFilter:            []*regexp.Regexp{},
 	}, 10)
-	createContainer := func(id, name, startTime string) types.ContainerJSON {
-		return types.ContainerJSON{
-			Mounts: []types.MountPoint{},
-			ContainerJSONBase: &types.ContainerJSONBase{
+	createContainer := func(id, name, startTime string) container.InspectResponse {
+		return container.InspectResponse{
+			Mounts: []container.MountPoint{},
+			ContainerJSONBase: &container.ContainerJSONBase{
 				ID: id,
-				State: &types.ContainerState{
+				State: &container.State{
 					StartedAt: startTime,
 				},
 				Name: name,
@@ -232,7 +231,7 @@ func TestTargetFilterShouldAdd(t *testing.T) {
 	tests := []struct {
 		name      string
 		forget    bool
-		container types.ContainerJSON
+		container container.InspectResponse
 		expected  []DockerTarget
 	}{
 		{
