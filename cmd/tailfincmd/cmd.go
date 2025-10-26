@@ -49,6 +49,7 @@ type options struct {
 	color            string
 	completion       string
 	compose          []string
+	context          string
 	configFilePath   string
 	containerColors  []string
 	containerQuery   []string
@@ -98,7 +99,7 @@ func NewOptions(streams IOStreams) *options {
 	}
 }
 
-func (o *options) Complete(args []string) error {
+func (o *options) Complete(args []string) {
 	if len(args) > 0 {
 		o.containerQuery = args
 	}
@@ -107,14 +108,6 @@ func (o *options) Complete(args []string) error {
 	if ok {
 		o.configFilePath = envVar
 	}
-
-	var err error
-	o.dockerClient, err = dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
-	if err != nil {
-		panic(err)
-	}
-
-	return nil
 }
 
 func (o *options) Validate() error {
@@ -335,6 +328,7 @@ func (o *options) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.noFollow, "no-follow", o.noFollow, "Exit when all logs have been shown.")
 	fs.StringArrayVarP(&o.image, "image", "m", o.image, "Images to match (regular expression)")
 	fs.StringArrayVarP(&o.include, "include", "i", o.include, "Log lines to include. (regular expression)")
+	fs.StringVar(&o.context, "context", o.context, "Docker context to use")
 	fs.StringArrayVarP(&o.highlight, "highlight", "H", o.highlight, "Log lines to highlight. (regular expression)")
 	fs.StringArrayVarP(&o.label, "label", "l", o.label, "Label query to filter on. One `key` or `key=value` per flag instance.")
 	fs.IntVar(&o.maxLogRequests, "max-log-requests", o.maxLogRequests, "Maximum number of concurrent logs to request. Defaults to 50, but 5 when specifying --no-follow")
@@ -575,9 +569,7 @@ func NewTailfinCmd(streams IOStreams) (*cobra.Command, error) {
 				return runCompletion(o.completion, cmd, o.Out)
 			}
 
-			if err := o.Complete(args); err != nil {
-				return err
-			}
+			o.Complete(args)
 
 			if err := o.overrideFlagSetDefaultFromConfig(cmd.Flags()); err != nil {
 				return err
@@ -588,6 +580,11 @@ func NewTailfinCmd(streams IOStreams) (*cobra.Command, error) {
 			}
 
 			cmd.SilenceUsage = true
+
+			var err error
+			if o.dockerClient, err = getDockerClient(o.context); err != nil {
+				return err
+			}
 
 			return o.Run(cmd)
 		},

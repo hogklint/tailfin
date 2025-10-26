@@ -90,7 +90,7 @@ func TestOptionsComplete(t *testing.T) {
 			}
 
 			o := NewOptions(streams)
-			_ = o.Complete(tt.args)
+			o.Complete(tt.args)
 
 			if tt.expectedConfigFilePath != o.configFilePath {
 				t.Errorf("expected %s for configFilePath, but got %s", tt.expectedConfigFilePath, o.configFilePath)

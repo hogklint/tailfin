@@ -76,16 +76,9 @@ func registerCompletionFuncForFlags(cmd *cobra.Command, o *options) error {
 // that match the toComplete prefix.
 func queryCompletionFunc(o *options) func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 	return func(_ *cobra.Command, _ []string, toComplete string) ([]string, cobra.ShellCompDirective) {
-		if err := o.Complete(nil); err != nil {
-			return compError(err)
-		}
+		o.Complete(nil)
 
 		var comps []string
 		return comps, cobra.ShellCompDirectiveNoFileComp
 	}
-}
-
-func compError(err error) ([]string, cobra.ShellCompDirective) {
-	cobra.CompError(err.Error())
-	return nil, cobra.ShellCompDirectiveError
 }
