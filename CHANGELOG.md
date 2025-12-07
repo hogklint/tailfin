@@ -1,3 +1,19 @@
+# v0.3.0
+
+## Highlights
+
+Added [docker contexts](https://docs.docker.com/engine/manage-resources/contexts/) support.
+
+## What's Changed
+* chore: Remove obsolete TODO by @hogklint in https://github.com/hogklint/tailfin/pull/6
+* fix: End new target loop on closed channel by @hogklint in https://github.com/hogklint/tailfin/pull/7
+* feat: Switch to containerd/log by @hogklint in https://github.com/hogklint/tailfin/pull/8
+* chore: Update dependencies by @hogklint in https://github.com/hogklint/tailfin/pull/9
+* feat: Add docker context support by @hogklint in https://github.com/hogklint/tailfin/pull/10
+
+
+**Full Changelog**: https://github.com/hogklint/tailfin/compare/v0.2.0...v0.3.0
+
 # v0.2.0
 
 ## :warning: Breaking Changes
